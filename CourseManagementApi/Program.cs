@@ -27,21 +27,9 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IAuditLogger, AuditLogger>();
 
-// CORS — дозволяємо Blazor звертатись до API
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowBlazorClient",
-        policy =>
-        {
-            policy.WithOrigins("http://localhost:5182") // вкажіть порт вашого фронтенду
-                  .AllowAnyHeader()
-                  .AllowAnyMethod();
-        });
-});
-
 // ── Автентифікація (JWT) ──────────────────────────────────────────────────
 var jwtKey = builder.Configuration["Jwt:Key"]
-    ?? throw new InvalidOperationException("Brak konfiguracji Jwt:Key w appsettings.json.");
+    ?? throw new InvalidOperationException("Brak konfiguracji Jwt:Key. Ustaw zmienną środowiskową Jwt__Key.");
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -59,7 +47,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// Усі ендпоінти вимагають авторизації за замовчуванням.
+// Усі API-ендпоінти вимагають авторизації за замовчуванням.
 builder.Services.AddAuthorization(options =>
 {
     options.FallbackPolicy = new AuthorizationPolicyBuilder()
@@ -69,21 +57,33 @@ builder.Services.AddAuthorization(options =>
 
 var app = builder.Build();
 
-app.UseCors("AllowBlazorClient");
+// Клієнт і API тепер на одному origin (той самий процес/домен) —
+// окремий CORS більше не потрібен.
 
-if (app.Environment.IsDevelopment()) 
+if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
 app.UseHttpsRedirection();
-app.UseCors();
+
+// ── Роздача Blazor WASM клієнта як статичних файлів ────────────────────────
+app.UseBlazorFrameworkFiles();
+app.UseStaticFiles();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllers(); 
+app.MapControllers();
+
+// Будь-який маршрут, що не збігся з API-контролером і не є файлом
+// (напр. /students, /login, /kandydaci) — віддає index.html,
+// а далі Blazor-роутер сам розбирається, яку сторінку показати.
+// AllowAnonymous() — ОБОВ'ЯЗКОВО: інакше глобальна вимога авторизації
+// заблокує саму можливість завантажити застосунок (сервер віддасть 401
+// ще до того, як Blazor встигне запуститись і показати /login).
+app.MapFallbackToFile("index.html").AllowAnonymous();
 
 // ── Засіювання початкових акаунтів (виконується один раз, якщо таблиця порожня) ──
 using (var scope = app.Services.CreateScope())
@@ -93,11 +93,13 @@ using (var scope = app.Services.CreateScope())
 
     if (!db.Users.Any())
     {
+        // ⚠️ ОБОВ'ЯЗКОВО змініть ці паролі перед першим деплоєм на прод —
+        // значення нижче використовувались лише під час розробки.
         var seedUsers = new[]
         {
-            ("admin1", "ZmiencieHaslo1!", "Admin"),
-            ("admin2", "ZmiencieHaslo2!", "Admin"),
-            ("superadmin", "SpS1JwuDtUASGI7k", "SuperAdmin")
+            ("admin1", Environment.GetEnvironmentVariable("SEED_ADMIN1_PASSWORD") ?? "ZmiencieHaslo1!", "Admin"),
+            ("admin2", Environment.GetEnvironmentVariable("SEED_ADMIN2_PASSWORD") ?? "ZmiencieHaslo2!", "Admin"),
+            ("superadmin", Environment.GetEnvironmentVariable("SEED_SUPERADMIN_PASSWORD") ?? "SpS1JwuDtUASGI7k", "SuperAdmin")
         };
 
         foreach (var (username, password, role) in seedUsers)
@@ -119,30 +121,4 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast")
-.WithOpenApi()
-.AllowAnonymous();
-
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
