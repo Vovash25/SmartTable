@@ -1,57 +1,124 @@
-using Microsoft.AspNetCore.Components.Web;
-using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.EntityFrameworkCore;
+using CourseManagementApi.Data;
+using CourseManagementApi.Data.Entities;
+using CourseManagementApi.Auth;
+using System.Text.Json.Serialization;
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
-using MudBlazor;
-using MudBlazor.Services;
-using SmartTable.Client;
-using SmartTable.Client.Services;
+using Microsoft.IdentityModel.Tokens;
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 
-var builder = WebAssemblyHostBuilder.CreateDefault(args);
-builder.RootComponents.Add<App>("#app");
-builder.RootComponents.Add<HeadOutlet>("head::after");
+var builder = WebApplication.CreateBuilder(args);
 
-// ── API Base Address ──────────────────────────────────────────────────────
-// Клієнт і API тепер живуть на одному origin (той самий процес),
-// тому просто беремо адресу, з якої завантажена сторінка.
-builder.Services.AddScoped(sp => new HttpClient
-{
-    BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)
-});
+// 1. Реєстрація сервісів (Services)
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// ── MudBlazor v7+ Configuration ──────────────────────────────────────────
-builder.Services.AddMudServices(config =>
-{
-    config.SnackbarConfiguration.PositionClass = Defaults.Classes.Position.BottomRight;
-    config.SnackbarConfiguration.PreventDuplicates = false;
-    config.SnackbarConfiguration.NewestOnTop = true;
-    config.SnackbarConfiguration.ShowCloseIcon = true;
-    config.SnackbarConfiguration.VisibleStateDuration = 4000;
-    config.SnackbarConfiguration.HideTransitionDuration = 300;
-    config.SnackbarConfiguration.ShowTransitionDuration = 300;
-    config.SnackbarConfiguration.SnackbarVariant = Variant.Filled;
-});
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+    });
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
-// ── Authorization & Authentication (реальний JWT-логін) ───────────────────
-builder.Services.AddAuthorizationCore(options =>
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IAuditLogger, AuditLogger>();
+
+// ── Автентифікація (JWT) ──────────────────────────────────────────────────
+var jwtKey = builder.Configuration["Jwt:Key"]
+    ?? throw new InvalidOperationException("Brak konfiguracji Jwt:Key. Ustaw zmienną środowiskową Jwt__Key.");
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            ClockSkew = TimeSpan.FromMinutes(1)
+        };
+    });
+
+// Усі API-ендпоінти вимагають авторизації за замовчуванням.
+builder.Services.AddAuthorization(options =>
 {
     options.FallbackPolicy = new AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
         .Build();
 });
-builder.Services.AddCascadingAuthenticationState();
-builder.Services.AddScoped<CustomAuthStateProvider>();
-builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<CustomAuthStateProvider>());
-builder.Services.AddScoped<AuthService>();
 
-builder.Services.AddSingleton<LocalizationService>();
-// ── Domain Services ───────────────────────────────────────────────────────
-builder.Services.AddScoped<IStudentService, StudentService>();
-builder.Services.AddScoped<ICourseService, CourseService>();
-builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
-builder.Services.AddScoped<IAuditService, AuditService>();
-builder.Services.AddScoped<IRegistrationService, RegistrationService>();
-builder.Services.AddScoped<IAdminUserService, AdminUserService>();
+var app = builder.Build();
 
-await builder.Build().RunAsync();
+// Клієнт і API тепер на одному origin (той самий процес/домен) —
+// окремий CORS більше не потрібен.
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseHttpsRedirection();
+
+// ── Роздача Blazor WASM клієнта як статичних файлів ────────────────────────
+app.UseBlazorFrameworkFiles();
+app.UseStaticFiles();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapControllers();
+
+// Будь-який маршрут, що не збігся з API-контролером і не є файлом
+// (напр. /students, /login, /kandydaci) — віддає index.html,
+// а далі Blazor-роутер сам розбирається, яку сторінку показати.
+// AllowAnonymous() — ОБОВ'ЯЗКОВО: інакше глобальна вимога авторизації
+// заблокує саму можливість завантажити застосунок (сервер віддасть 401
+// ще до того, як Blazor встигне запуститись і показати /login).
+app.MapFallbackToFile("index.html").AllowAnonymous();
+
+// ── Засіювання початкових акаунтів (виконується один раз, якщо таблиця порожня) ──
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    db.Database.Migrate();
+
+    if (!db.Users.Any())
+    {
+        // ⚠️ ОБОВ'ЯЗКОВО змініть ці паролі перед першим деплоєм на прод —
+        // значення нижче використовувались лише під час розробки.
+        var seedUsers = new[]
+        {
+            ("admin1", Environment.GetEnvironmentVariable("SEED_ADMIN1_PASSWORD") ?? "ZmiencieHaslo1!", "Admin"),
+            ("admin2", Environment.GetEnvironmentVariable("SEED_ADMIN2_PASSWORD") ?? "ZmiencieHaslo2!", "Admin"),
+            ("superadmin", Environment.GetEnvironmentVariable("SEED_SUPERADMIN_PASSWORD") ?? "SpS1JwuDtUASGI7k", "SuperAdmin")
+        };
+
+        foreach (var (username, password, role) in seedUsers)
+        {
+            var (hash, salt) = PasswordHasher.Hash(password);
+            db.Users.Add(new AppUser
+            {
+                Id = Guid.NewGuid(),
+                Username = username,
+                PasswordHash = hash,
+                PasswordSalt = salt,
+                Role = role,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        db.SaveChanges();
+        Console.WriteLine("Zasiano początkowe konta: admin1, admin2, superadmin.");
+    }
+}
+
+app.Run();
