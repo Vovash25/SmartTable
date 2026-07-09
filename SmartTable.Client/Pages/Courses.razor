@@ -1,0 +1,152 @@
+@page "/courses"
+@inject ICourseService CourseSvc
+@inject IDialogService DialogSvc
+@inject ISnackbar Snackbar
+@inject SmartTable.Client.Services.LocalizationService LocalizationSvc
+@implements IDisposable
+
+<PageTitle>@LocalizationSvc.GetString("Courses") — SmartTable</PageTitle>
+
+<div class="d-flex align-center justify-space-between mb-4">
+    <div>
+        <MudText Typo="Typo.h5" Style="font-weight:700;">@LocalizationSvc.GetString("Courses")</MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary">
+            @LocalizationSvc.GetString("Total"): @_courses.Count
+        </MudText>
+    </div>
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.AddCircleOutline"
+               OnClick="OpenAddDialog"
+               Disabled="_loading">
+        @LocalizationSvc.GetString("AddCourse")
+    </MudButton>
+</div>
+
+<MudTextField @bind-Value="_search"
+              Placeholder="@LocalizationSvc.GetString("SearchByTypeOrLanguage")"
+              Adornment="Adornment.Start"
+              AdornmentIcon="@Icons.Material.Filled.Search"
+              Variant="Variant.Outlined"
+              Immediate="true"
+              DebounceInterval="200"
+              Class="mb-4"
+              Style="max-width:400px;" />
+
+<MudDataGrid T="Course"
+             Items="FilteredCourses"
+             SortMode="SortMode.Multiple"
+             Hover="true"
+             Striped="true"
+             Dense="true"
+             Loading="_loading">
+    <Columns>
+        <PropertyColumn Property="x => x.CourseType" Title="@LocalizationSvc.GetString("CourseType")" Sortable="true" />
+        <PropertyColumn Property="x => x.Language"   Title="@LocalizationSvc.GetString("Language_col")" Sortable="true" />
+        <TemplateColumn Title="@LocalizationSvc.GetString("Actions")" CellStyle="width:100px;" Context="col">
+            <CellTemplate>
+                <MudStack Row="true" Spacing="1">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                   Size="Size.Small"
+                                   Color="Color.Primary"
+                                   OnClick="@(() => OpenEditDialog(col.Item))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline"
+                                   Size="Size.Small"
+                                   Color="Color.Error"
+                                   OnClick="@(() => DeleteCourse(col.Item))" />
+                </MudStack>
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+    <NoRecordsContent>
+        <MudText Color="Color.Secondary">@LocalizationSvc.GetString("NoCoursesFound")</MudText>
+    </NoRecordsContent>
+</MudDataGrid>
+
+@code {
+    private List<Course> _courses = new();
+    private string _search = string.Empty;
+    private bool _loading = true;
+
+    private IEnumerable<Course> FilteredCourses => string.IsNullOrWhiteSpace(_search)
+        ? _courses
+        : _courses.Where(c =>
+            (c.CourseType != null && c.CourseType.Contains(_search, StringComparison.OrdinalIgnoreCase)) ||
+            (c.Language != null && c.Language.Contains(_search, StringComparison.OrdinalIgnoreCase)));
+
+    protected override async Task OnInitializedAsync()
+    {
+        LocalizationSvc.OnLanguageChanged += StateHasChanged;
+        await LoadAsync();
+    }
+
+    public void Dispose()
+    {
+        LocalizationSvc.OnLanguageChanged -= StateHasChanged;
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try   { _courses = await CourseSvc.GetAllAsync(); }
+        catch { Snackbar.Add(LocalizationSvc.GetString("ErrorLoadingCourses"), Severity.Error); }
+        finally { _loading = false; }
+    }
+
+    private void OpenAddDialog() =>
+        _ = OpenDialog(new Course(), isNew: true);
+
+    private void OpenEditDialog(Course c) =>
+        _ = OpenDialog(new Course { Id = c.Id, CourseType = c.CourseType, Language = c.Language }, isNew: false);
+
+    private async Task OpenDialog(Course model, bool isNew)
+    {
+        var parameters = new DialogParameters
+        {
+            ["Model"] = model,
+            ["IsNew"] = isNew
+        };
+        var dialog = await DialogSvc.ShowAsync<CourseDialog>(
+            isNew ? LocalizationSvc.GetString("NewCourse") : LocalizationSvc.GetString("EditCourse"),
+            parameters,
+            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, CloseButton = true });
+
+        var result = await dialog.Result;
+        if (!result.Canceled && result.Data is Course saved)
+        {
+            bool success;
+            if (isNew)
+            {
+                var created = await CourseSvc.CreateAsync(saved);
+                success = created != null;
+            }
+            else
+            {
+                success = await CourseSvc.UpdateAsync(saved);
+            }
+
+            Snackbar.Add(success
+                ? (isNew ? LocalizationSvc.GetString("CourseAdded") : LocalizationSvc.GetString("CourseUpdated"))
+                : LocalizationSvc.GetString("SaveError"),
+                success ? Severity.Success : Severity.Error);
+
+            if (success) await LoadAsync();
+        }
+    }
+
+    private async Task DeleteCourse(Course c)
+    {
+        var confirmed = await DialogSvc.ShowMessageBox(
+            LocalizationSvc.GetString("Confirmation"),
+            $"{LocalizationSvc.GetString("DeleteCourseQuestion")} «{c.CourseType} ({c.Language})»?",
+            yesText: LocalizationSvc.GetString("Yes"), cancelText: LocalizationSvc.GetString("Cancel"));
+
+        if (confirmed == true)
+        {
+            var ok = await CourseSvc.DeleteAsync(c.Id); 
+            Snackbar.Add(ok ? LocalizationSvc.GetString("CourseDeleted") : LocalizationSvc.GetString("DeleteError"),
+                         ok ? Severity.Success : Severity.Error);
+            if (ok) await LoadAsync();
+        }
+    }
+}

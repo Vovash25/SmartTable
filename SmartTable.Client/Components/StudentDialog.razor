@@ -1,0 +1,69 @@
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_isValid">
+            <MudStack Spacing="3">
+                <MudTextField @bind-Value="Model.FullName"
+                              Label="Повне ім'я (ПІБ)"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              RequiredError="Обов'язкове поле"
+                              Immediate="true" />
+
+                <MudDatePicker @bind-Date="_dateOfBirth"
+                               Label="Дата народження"
+                               Variant="Variant.Outlined"
+                               DateFormat="dd.MM.yyyy"
+                               MaxDate="DateTime.Today" />
+
+                <MudTextField @bind-Value="Model.Citizenship"
+                              Label="Громадянство"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              RequiredError="Обов'язкове поле" />
+
+                <MudTextField @bind-Value="Model.PkkNumber"
+                              Label="Номер ПКК"
+                              Variant="Variant.Outlined"
+                              Placeholder="Необов'язково" />
+            </MudStack>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Color="Color.Default" Variant="Variant.Text">
+            Скасувати
+        </MudButton>
+        <MudButton OnClick="Submit"
+                   Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   Disabled="!_isValid">
+            @(IsNew ? "Додати" : "Зберегти")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public Student Model { get; set; } = new();
+    [Parameter] public bool IsNew { get; set; }
+
+    private MudForm _form = null!;
+    private bool _isValid;
+
+    // MudDatePicker uses DateTime? so we bridge it
+    private DateTime? _dateOfBirth
+    {
+        get => Model.DateOfBirth == default ? null : Model.DateOfBirth;
+        set => Model.DateOfBirth = value ?? DateTime.Today;
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Submit()
+    {
+        await _form.Validate();
+        if (_isValid)
+            MudDialog.Close(DialogResult.Ok(Model));
+    }
+}

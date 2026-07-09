@@ -1,0 +1,152 @@
+@page "/registrations"
+@inject IRegistrationService RegSvc
+@inject IDialogService DialogSvc
+@inject ISnackbar Snackbar
+@inject SmartTable.Client.Services.LocalizationService LocalizationSvc
+@implements IDisposable
+
+<PageTitle>Rejestracje kandydatów — SmartTable</PageTitle>
+
+<div class="d-flex align-center justify-space-between mb-4">
+    <div>
+        <MudText Typo="Typo.h5" Style="font-weight:700;">Rejestracje kandydatów</MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary">
+            Wszystkich: @_registrations.Count
+        </MudText>
+    </div>
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.PersonAdd"
+               OnClick="OpenAddDialog"
+               Disabled="_loading">
+        Dodaj rejestrację
+    </MudButton>
+</div>
+
+<MudTextField @bind-Value="_searchTerm"
+              Placeholder="Szukaj po imieniu, nazwisku lub telefonie..."
+              Adornment="Adornment.Start"
+              AdornmentIcon="@Icons.Material.Filled.Search"
+              Variant="Variant.Outlined"
+              Immediate="true"
+              DebounceInterval="250"
+              Class="mb-4"
+              Style="max-width:400px;" />
+
+<MudDataGrid T="CandidateRegistration"
+             Items="FilteredRegistrations"
+             SortMode="SortMode.Multiple"
+             Hover="true"
+             Striped="true"
+             Dense="true"
+             Loading="_loading">
+    <Columns>
+        <PropertyColumn Property="x => x.FullName" Title="Kandydat" />
+        <PropertyColumn Property="x => x.PhoneE164" Title="Telefon" />
+        <PropertyColumn Property="x => x.PrimaryContactMethod" Title="Kontakt" />
+        
+        <TemplateColumn Title="Kurs">
+            <CellTemplate>
+                @($"{context.Item.CourseType} {context.Item.CourseLanguage}")
+            </CellTemplate>
+        </TemplateColumn>
+        
+        <TemplateColumn Title="Preferowany termin">
+            <CellTemplate>
+                @(context.Item.PreferredCourseDate?.ToString("dd.MM.yyyy") ?? "-")
+            </CellTemplate>
+        </TemplateColumn>
+        
+        <TemplateColumn Title="Firma">
+            <CellTemplate>
+                @(context.Item.PayerType == "company" ? context.Item.CompanyName : "prywatnie")
+            </CellTemplate>
+        </TemplateColumn>
+        
+        <TemplateColumn Title="Hotel">
+            <CellTemplate>
+                @(context.Item.NeedsHotel == "yes" ? "Tak" : context.Item.NeedsHotel == "no" ? "Nie" : "Nie wiadomo")
+            </CellTemplate>
+        </TemplateColumn>
+        
+        <PropertyColumn Property="x => x.Status" Title="Status" />
+        
+        <TemplateColumn Title="Akcja">
+            <CellTemplate>
+                <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" OnClick="@(() => OpenEditDialog(context.Item))">Edytuj</MudButton>
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+    <NoRecordsContent>
+        <MudText Color="Color.Secondary">Brak rejestracji</MudText>
+    </NoRecordsContent>
+</MudDataGrid>
+
+@code {
+    private List<CandidateRegistration> _registrations = new();
+    private string _searchTerm = string.Empty;
+    private bool _loading = true;
+
+    private IEnumerable<CandidateRegistration> FilteredRegistrations => _registrations
+        .Where(r => 
+            string.IsNullOrWhiteSpace(_searchTerm) ||
+            (r.FullName != null && r.FullName.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase)) ||
+            (r.PhoneE164 != null && r.PhoneE164.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase)));
+
+    protected override async Task OnInitializedAsync()
+    {
+        LocalizationSvc.OnLanguageChanged += StateHasChanged;
+        await LoadDataAsync();
+    }
+
+    public void Dispose()
+    {
+        LocalizationSvc.OnLanguageChanged -= StateHasChanged;
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _loading = true;
+        try   { _registrations = await RegSvc.GetAllAsync(); }
+        catch { Snackbar.Add("Błąd ładowania danych", Severity.Error); }
+        finally { _loading = false; }
+    }
+
+    private async Task OpenAddDialog()
+    {
+        var parameters = new DialogParameters { ["Model"] = new CandidateRegistration(), ["IsNew"] = true };
+        await ShowDialogAsync("Dodaj rejestrację", parameters);
+    }
+
+    private async Task OpenEditDialog(CandidateRegistration reg)
+    {
+        var parameters = new DialogParameters { ["Model"] = reg, ["IsNew"] = false };
+        await ShowDialogAsync("Edytuj", parameters);
+    }
+
+    private async Task ShowDialogAsync(string title, DialogParameters parameters)
+    {
+        var dialog = await DialogSvc.ShowAsync<RegistrationDialog>(
+            title, 
+            parameters, 
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true });
+
+        var result = await dialog.Result;
+        if (!result.Canceled && result.Data is CandidateRegistration saved)
+        {
+            bool success = parameters.Get<bool>("IsNew")
+                ? (await RegSvc.CreateAsync(saved)) != null
+                : await RegSvc.UpdateAsync(saved);
+
+            if (success)
+            {
+                Snackbar.Add("Zapisano pomyślnie", Severity.Success);
+                await LoadDataAsync();
+            }
+            else
+            {
+                Snackbar.Add("Błąd zapisywania (możliwy duplikat)", Severity.Error);
+            }
+        }
+    }
+}

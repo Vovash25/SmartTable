@@ -1,0 +1,173 @@
+@inherits LayoutComponentBase
+@inject NavigationManager Nav
+@inject SmartTable.Client.Services.LocalizationService LocalizationSvc
+@inject SmartTable.Client.Services.AuthService AuthSvc
+@implements IDisposable
+
+<MudThemeProvider Theme="_darkTheme" IsDarkMode="true" />
+<MudDialogProvider />
+<MudSnackbarProvider />
+<MudPopoverProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="1" Color="Color.Dark" Dense="true" ClippingLeft="true">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" 
+                       Color="Color.Inherit" 
+                       Edge="Edge.Start" 
+                       OnClick="ToggleDrawer" />
+        
+        <MudText Typo="Typo.h6" Class="ml-3" Style="letter-spacing:0.05em; font-weight:700;">
+            SMART<span style="color:#7C8CF8;">TABLE</span>
+        </MudText>
+
+        <MudSpacer />
+
+
+        <MudMenu Icon="@Icons.Material.Filled.AccountCircle" Color="Color.Inherit" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+            <AuthorizeView>
+                <Authorized>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="px-4 pt-1 pb-2 d-block">
+                        Zalogowano jako: @context.User.Identity?.Name
+                    </MudText>
+                    <MudDivider Class="my-1" />
+                </Authorized>
+            </AuthorizeView>
+            <MudMenuItem OnClick="Logout" Icon="@Icons.Material.Filled.Logout" IconColor="Color.Error">
+                Wyloguj się
+            </MudMenuItem>
+        </MudMenu>
+    </MudAppBar>
+
+    <MudDrawer @bind-Open="_drawerOpen" 
+               ClipMode="DrawerClipMode.Always" 
+               Elevation="2" 
+               Variant="DrawerVariant.Mini"
+               Color="Color.Dark"
+               OpenMiniOnHover="true">
+<MudNavMenu Class="mt-2">
+    <MudNavLink Href="/students" Match="NavLinkMatch.All" 
+                Icon="@Icons.Material.Filled.People">
+        @LocalizationSvc.GetString("Students")
+    </MudNavLink>
+    <MudNavLink Href="/candidates" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.RecentActors">
+    Kandydaci
+</MudNavLink>
+    <MudNavLink Href="/registrations" Match="NavLinkMatch.Prefix"
+                Icon="@Icons.Material.Filled.AssignmentTurnedIn">
+        @LocalizationSvc.GetString("Registrations")
+    </MudNavLink>
+    <MudNavLink Href="/courses" 
+                Icon="@Icons.Material.Filled.School">
+        @LocalizationSvc.GetString("Courses")
+    </MudNavLink>
+
+    <MudDivider Class="my-2" />
+
+    <AuthorizeView Roles="SuperAdmin">
+        <MudNavLink Href="/admin/logs" 
+                    Icon="@Icons.Material.Filled.ManageSearch" 
+                    Style="color:#7C8CF8;">
+            @LocalizationSvc.GetString("AuditLogs")
+        </MudNavLink>
+        <MudNavLink Href="/admin/users" 
+                    Icon="@Icons.Material.Filled.AdminPanelSettings" 
+                    Style="color:#7C8CF8;">
+            Admini
+        </MudNavLink>
+    </AuthorizeView>
+
+    <MudDivider Class="my-2" />
+
+    <div class="px-4 py-2">
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-1">
+            @LocalizationSvc.GetString("Language"):
+        </MudText>
+        <MudSelect T="string" Value="LocalizationSvc.CurrentLanguage" 
+                   ValueChanged="@(async (lang) => { LocalizationSvc.CurrentLanguage = lang; })" 
+                   Dense="true" Variant="Variant.Outlined" 
+                   Style="background: #1A1D27;">
+            <MudSelectItem Value="@("uk")">🇺🇦 Українська</MudSelectItem>
+            <MudSelectItem Value="@("pl")">🇵🇱 Polski</MudSelectItem>
+            <MudSelectItem Value="@("en")">🇬🇧 English</MudSelectItem>
+        </MudSelect>
+    </div>
+</MudNavMenu>
+    </MudDrawer>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private bool _drawerOpen = true;
+
+    private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+
+    private async Task Logout()
+    {
+        await AuthSvc.LogoutAsync();
+        Nav.NavigateTo("/login", forceLoad: true);
+    }
+
+    protected override void OnInitialized()
+    {
+        LocalizationSvc.OnLanguageChanged += StateHasChanged;
+    }
+
+    private void OnLanguageChange(string lang)
+    {
+        LocalizationSvc.CurrentLanguage = lang;
+    }
+
+    public void Dispose()
+    {
+        LocalizationSvc.OnLanguageChanged -= StateHasChanged;
+    }
+
+    private MudTheme _darkTheme = new MudTheme
+    {
+        PaletteDark = new PaletteDark
+        {
+            Primary          = "#7C8CF8",
+            PrimaryDarken    = "#5B6CF6",
+            Secondary        = "#38BDF8",
+            Background       = "#0F1117",
+            Surface          = "#1A1D27",
+            DrawerBackground = "#13161F",
+            AppbarBackground = "#13161F",
+            TextPrimary      = "#E8EAF6",
+            TextSecondary    = "#8B8FA8",
+            ActionDefault    = "#7C8CF8",
+            Divider          = "#2A2D3E",
+            TableLines       = "#2A2D3E",
+            TableStriped     = "#161923",
+            TableHover       = "#1F2235",
+            Success          = "#22D3A0",
+            Warning          = "#FBBF24",
+            Error            = "#F87171",
+            Info             = "#38BDF8",
+            LinesDefault     = "#2A2D3E",
+        },
+        Typography = new Typography
+        {
+            Default = new Default
+            {
+                FontFamily = new[] { "Inter", "system-ui", "sans-serif" },
+                FontSize = "0.875rem",
+                FontWeight = 400,
+                LineHeight = 1.5
+            },
+            H6 = new H6
+            {
+                FontFamily = new[] { "Inter", "sans-serif" },
+                FontSize = "1.25rem",
+                FontWeight = 700,
+                LineHeight = 1.6,
+                LetterSpacing = "0.03em"
+            }
+        }
+    };
+}

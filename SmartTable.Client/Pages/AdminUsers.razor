@@ -1,0 +1,107 @@
+@page "/admin/users"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "SuperAdmin")]
+@using SmartTable.Client.Services
+@inject IAdminUserService AdminSvc
+@inject IDialogService DialogSvc
+@inject ISnackbar Snackbar
+
+<PageTitle>Zarządzanie adminami — SmartTable</PageTitle>
+
+<div class="d-flex align-center justify-space-between mb-4">
+    <div>
+        <MudText Typo="Typo.h5" Style="font-weight:700;">Zarządzanie kontami adminów</MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary">
+            Razem: @_users.Count
+        </MudText>
+    </div>
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.PersonAdd"
+               OnClick="OpenCreateDialog"
+               Disabled="_loading">
+        Dodaj admina
+    </MudButton>
+</div>
+
+<MudDataGrid T="AdminUserDto" Items="_users" Hover="true" Striped="true" Dense="true" Loading="_loading">
+    <Columns>
+        <PropertyColumn Property="x => x.Username" Title="Login" />
+        <TemplateColumn Title="Rola">
+            <CellTemplate>
+                <MudChip T="string" Size="Size.Small" Color="@(context.Item.Role == "SuperAdmin" ? Color.Primary : Color.Default)">
+                    @context.Item.Role
+                </MudChip>
+            </CellTemplate>
+        </TemplateColumn>
+        <PropertyColumn Property="x => x.CreatedAt" Title="Utworzono" Format="dd.MM.yyyy HH:mm" />
+        <TemplateColumn Title="Akcja" CellStyle="width:80px;">
+            <CellTemplate>
+                @if (context.Item.Role != "SuperAdmin")
+                {
+                    <MudTooltip Text="Usuń konto">
+                        <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Size="Size.Small" Color="Color.Error"
+                                       OnClick="@(() => DeleteUser(context.Item))" />
+                    </MudTooltip>
+                }
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+    <NoRecordsContent>
+        <MudText Color="Color.Secondary">Brak kont</MudText>
+    </NoRecordsContent>
+</MudDataGrid>
+
+@code {
+    private List<AdminUserDto> _users = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try { _users = await AdminSvc.GetAllAsync(); }
+        catch { Snackbar.Add("Błąd ładowania listy adminów", Severity.Error); }
+        finally { _loading = false; }
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var parameters = new DialogParameters();
+        var dialog = await DialogSvc.ShowAsync<CreateAdminDialog>("Dodaj admina", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true });
+
+        var result = await dialog.Result;
+        if (result.Canceled || result.Data is not (string username, string password)) return;
+
+        var (success, error) = await AdminSvc.CreateAsync(username, password);
+        if (success)
+        {
+            Snackbar.Add("Konto admina utworzone.", Severity.Success);
+            await LoadAsync();
+        }
+        else
+        {
+            Snackbar.Add(error ?? "Błąd tworzenia konta.", Severity.Error);
+        }
+    }
+
+    private async Task DeleteUser(AdminUserDto user)
+    {
+        var confirmed = await DialogSvc.ShowMessageBox("Potwierdzenie usunięcia",
+            $"Usunąć konto admina «{user.Username}»?", yesText: "Tak", cancelText: "Anuluj");
+
+        if (confirmed != true) return;
+
+        var (success, error) = await AdminSvc.DeleteAsync(user.Id);
+        if (success)
+        {
+            Snackbar.Add("Konto usunięte.", Severity.Success);
+            await LoadAsync();
+        }
+        else
+        {
+            Snackbar.Add(error ?? "Błąd usuwania konta.", Severity.Error);
+        }
+    }
+}

@@ -1,0 +1,398 @@
+@page "/candidates"
+@using SmartTable.Client.Models
+@inject IRegistrationService RegSvc
+@inject ICourseService CourseSvc
+@inject IEnrollmentService EnrollSvc
+@inject IDialogService DialogSvc
+@inject ISnackbar Snackbar
+@inject SmartTable.Client.Services.LocalizationService LocalizationSvc
+@implements IDisposable
+
+<PageTitle>Kandydaci (Oczekujący) — SmartTable</PageTitle>
+
+<div class="d-flex align-center justify-space-between mb-4">
+    <div>
+        <MudText Typo="Typo.h5" Style="font-weight:700;">Kandydaci (Oczekujący)</MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary">
+            Wszystkich w kolejce: @_candidates.Count
+        </MudText>
+    </div>
+</div>
+
+<MudTextField @bind-Value="_searchTerm"
+              Placeholder="Szukaj po imieniu, nazwisku lub telefonie..."
+              Adornment="Adornment.Start"
+              AdornmentIcon="@Icons.Material.Filled.Search"
+              Variant="Variant.Outlined"
+              Immediate="true"
+              DebounceInterval="250"
+              Class="mb-4"
+              Style="max-width:400px;" />
+
+<MudDataGrid T="CandidateRegistration"
+             Items="FilteredCandidates"
+             SortMode="SortMode.Multiple"
+             Hover="true"
+             Striped="true"
+             Dense="true"
+             Loading="_loading">
+    <Columns>
+        <HierarchyColumn T="CandidateRegistration" />
+        
+        <PropertyColumn Property="x => x.FullName" Title="Kandydat" />
+        <PropertyColumn Property="x => x.PhoneE164" Title="Telefon" />
+        
+        <TemplateColumn Title="Kurs">
+            <CellTemplate>
+                @{
+                    var enrollments = GetEnrollmentsFor(context.Item);
+                }
+                @if (enrollments.Any())
+                {
+                    <MudStack Spacing="1">
+                        @foreach (var e in enrollments)
+                        {
+                            <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                                <MudText Typo="Typo.body2">@($"{e.Course?.CourseType} {e.Course?.Language}".Trim())</MudText>
+                                <MudChip T="string" Size="Size.Small" Color="@EnrollmentStatusColor(e.Status)">@EnrollmentStatusLabel(e.Status)</MudChip>
+                            </MudStack>
+                        }
+                    </MudStack>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">-</MudText>
+                }
+            </CellTemplate>
+        </TemplateColumn>
+        
+        @* ДИНАМІЧНИЙ ЗАГАЛЬНИЙ СТАТУС *@
+        <TemplateColumn Title="Status">
+            <CellTemplate>
+                @{
+                    var enrolls = GetEnrollmentsFor(context.Item);
+                    var hasActive = enrolls.Any(e => e.Status == "Active");
+                    var hasFinished = enrolls.Any(e => e.Status == "Finished");
+                    var hasDropped = enrolls.Any(e => e.Status == "Dropped");
+                }
+
+                @if (context.Item.Status == "canceled")
+                {
+                    <MudChip T="string" Color="Color.Error" Size="Size.Small">Anulowany</MudChip>
+                }
+                else if (context.Item.Status == "assigned_to_course")
+                {
+                    @if (hasActive || !enrolls.Any())
+                    {
+                        <MudChip T="string" Color="Color.Success" Size="Size.Small">Zarejestrowany</MudChip>
+                    }
+                    else if (!hasActive && hasFinished) 
+                    {
+                        @* Немає активних, але є хоча б один завершений *@
+                        <MudChip T="string" Color="Color.Info" Size="Size.Small">Skończone</MudChip>
+                    }
+                    else if (!hasActive && hasDropped && !hasFinished) 
+                    {
+                        @* Всі курси викреслені *@
+                        <MudChip T="string" Color="Color.Dark" Size="Size.Small">Skreślony</MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Color="Color.Success" Size="Size.Small">Zarejestrowany</MudChip>
+                    }
+                }
+                else
+                {
+                    <MudChip T="string" Color="Color.Warning" Size="Size.Small">Oczekujący</MudChip>
+                }
+            </CellTemplate>
+        </TemplateColumn>
+        
+        <TemplateColumn Title="Akcja" CellStyle="width:200px;">
+            <CellTemplate>
+                @{
+                    var enrollments = GetEnrollmentsFor(context.Item);
+                    var hasActiveEnrollment = enrollments.Any(e => e.Status == "Active");
+                }
+                <MudStack Row="true" Spacing="1">
+                    
+                    @* 1. Кнопка реєстрації (ЗЕЛЕНА) - Тепер доступна ЗАВЖДИ, навіть для скасованих *@
+                    <MudTooltip Text="@(enrollments.Any() ? "Dodaj kolejny kurs" : "Zarejestruj (Przypisz do kursu)")">
+                        <MudIconButton Icon="@(enrollments.Any() ? Icons.Material.Filled.Add : Icons.Material.Filled.CheckCircle)"
+                                       Size="Size.Small" Color="Color.Success"
+                                       OnClick="@(() => OpenAssignDialog(context.Item))" />
+                    </MudTooltip>
+
+                    @* 2. Кнопки управління активним курсом (Фініш, Викреслити, Відкріпити) *@
+                    @if (hasActiveEnrollment)
+                    {
+                        <MudTooltip Text="Zakończ kurs (Skończone)">
+                            <MudIconButton Icon="@Icons.Material.Filled.DoneAll" Color="Color.Info" Size="Size.Small" OnClick="@(() => OpenStatusDialog(context.Item, "finished"))" />
+                        </MudTooltip>
+                        <MudTooltip Text="Skreśl z listy studentów">
+                            <MudIconButton Icon="@Icons.Material.Filled.PersonRemove" Color="Color.Warning" Size="Size.Small" OnClick="@(() => OpenStatusDialog(context.Item, "dropped"))" />
+                        </MudTooltip>
+                        <MudTooltip Text="Usuń z kursu (Pomyłka)">
+                            <MudIconButton Icon="@Icons.Material.Filled.LinkOff" Color="Color.Default" Size="Size.Small" OnClick="@(() => OpenStatusDialog(context.Item, "remove_course"))" />
+                        </MudTooltip>
+                    }
+
+                    @* 3. Кнопка скасування (ХРЕСТИК) - Показуємо тільки якщо немає активних курсів і ще не скасований *@
+                    @if (!hasActiveEnrollment && context.Item.Status != "canceled")
+                    {
+                        <MudTooltip Text="Anuluj rejestrację">
+                            <MudIconButton Icon="@Icons.Material.Filled.Cancel" Color="Color.Error" Size="Size.Small" OnClick="@(() => OpenStatusDialog(context.Item, "canceled"))" />
+                        </MudTooltip>
+                    }
+
+                    @* 4. Кнопка остаточного видалення (СМІТНИК) - Завжди доступна *@
+                    <MudTooltip Text="Usuń trwale całą rejestrację">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteCandidate(context.Item))" />
+                    </MudTooltip>
+
+                </MudStack>
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+    
+    <ChildRowContent>
+        <MudCard Elevation="0" Class="pa-4 my-2" Style="background-color: var(--mud-palette-background-grey); border-radius: 8px;">
+            <MudText Typo="Typo.subtitle1" Color="Color.Primary" Class="mb-3">
+                <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="mr-1 mb-1"/>
+                Szczegóły kandydata
+            </MudText>
+            <MudGrid>
+                <MudItem xs="12" sm="4">
+                    <MudText Typo="Typo.body2"><b>Imię i nazwisko:</b> @context.Item.FullName</MudText>
+                    <MudText Typo="Typo.body2"><b>Numer telefonu:</b> @context.Item.PhoneE164</MudText>
+                    <MudText Typo="Typo.body2"><b>Sposób kontaktu:</b> @context.Item.PrimaryContactMethod</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudText Typo="Typo.body2" Class="mb-1">
+                        <b>Preferowany kurs:</b> @(string.IsNullOrWhiteSpace(context.Item.CourseType) ? "-" : $"{context.Item.CourseType} {context.Item.CourseLanguage}".Trim())
+                    </MudText>
+                    <MudText Typo="Typo.body2" Class="mb-3">
+                        <b>Preferowana data:</b> 
+                        @(context.Item.PlannedArrivalDate?.ToString("dd.MM.yyyy") ?? context.Item.PreferredCourseDate?.ToString("dd.MM.yyyy") ?? "-")
+                    </MudText>
+                    
+                    @* Виводимо фактичні записи на курси *@
+                    @foreach (var e in GetEnrollmentsFor(context.Item))
+                    {
+                        <MudText Typo="Typo.body2">
+                            <b>@($"{e.Course?.CourseType} {e.Course?.Language}".Trim()):</b> @EnrollmentStatusLabel(e.Status)
+                            @if (!string.IsNullOrWhiteSpace(e.Notes)) { <span> — @e.Notes</span> }
+                        </MudText>
+                    }
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudText Typo="Typo.body2"><b>Preferowana data:</b> 
+                        @(context.Item.PlannedArrivalDate?.ToString("dd.MM.yyyy") ?? context.Item.PreferredCourseDate?.ToString("dd.MM.yyyy") ?? "-")
+                    </MudText>
+                    @foreach (var e in GetEnrollmentsFor(context.Item))
+                    {
+                        <MudText Typo="Typo.body2">
+                            <b>@($"{e.Course?.CourseType} {e.Course?.Language}".Trim()):</b> @EnrollmentStatusLabel(e.Status)
+                            @if (!string.IsNullOrWhiteSpace(e.Notes)) { <span> — @e.Notes</span> }
+                        </MudText>
+                    }
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudText Typo="Typo.body2"><b>Firma:</b> @(context.Item.PayerType == "company" ? context.Item.CompanyName : "Osoba prywatna")</MudText>
+                    <MudText Typo="Typo.body2">
+                        <b>Hotel:</b> 
+                        @(context.Item.NeedsHotel == "yes" ? $"Tak ({context.Item.HotelFrom?.ToString("dd.MM")} - {context.Item.HotelTo?.ToString("dd.MM")})" : context.Item.NeedsHotel == "no" ? "Nie" : "Nie wiadomo")
+                    </MudText>
+                    <MudText Typo="Typo.body2"><b>Uwagi:</b> @context.Item.RegistrationNotes @context.Item.ContactNotes</MudText>
+                </MudItem>
+            </MudGrid>
+        </MudCard>
+    </ChildRowContent>
+    <NoRecordsContent><MudText Color="Color.Secondary">Brak kandydatów</MudText></NoRecordsContent>
+</MudDataGrid>
+
+@code {
+    private List<CandidateRegistration> _candidates = new();
+    private List<Course> _courses = new();
+    private List<Enrollment> _enrollments = new();
+    private string _searchTerm = string.Empty;
+    private bool _loading = true;
+
+    private IEnumerable<CandidateRegistration> FilteredCandidates => _candidates
+        .Where(r => string.IsNullOrWhiteSpace(_searchTerm) ||
+                    (r.FullName != null && r.FullName.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase)) ||
+                    (r.PhoneE164 != null && r.PhoneE164.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase)));
+
+    private List<Enrollment> GetEnrollmentsFor(CandidateRegistration reg) =>
+        _enrollments.Where(e => e.Student != null &&
+                                 string.Equals(e.Student.FullName, reg.FullName, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+
+    private static string EnrollmentStatusLabel(string status) => status switch
+    {
+        "Active" => "W trakcie",
+        "Finished" => "Skończone",
+        "Dropped" => "Skreślony",
+        _ => status
+    };
+
+    private static Color EnrollmentStatusColor(string status) => status switch
+    {
+        "Active" => Color.Warning,
+        "Finished" => Color.Info,
+        "Dropped" => Color.Dark,
+        _ => Color.Default
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        LocalizationSvc.OnLanguageChanged += StateHasChanged;
+        await LoadDataAsync();
+    }
+
+    public void Dispose() => LocalizationSvc.OnLanguageChanged -= StateHasChanged;
+
+    private async Task LoadDataAsync()
+    {
+        _loading = true;
+        try
+        {
+            _candidates = await RegSvc.GetAllAsync();
+            _enrollments = await EnrollSvc.GetAllAsync();
+        }
+        catch { Snackbar.Add("Błąd ładowania danych", Severity.Error); }
+        finally { _loading = false; }
+    }
+
+    private async Task OpenAssignDialog(CandidateRegistration reg)
+    {
+        if (!_courses.Any())
+        {
+            try { _courses = await CourseSvc.GetAllAsync(); }
+            catch { Snackbar.Add("Błąd ładowania kursów", Severity.Error); return; }
+        }
+
+        var parameters = new DialogParameters { ["Candidate"] = reg, ["Courses"] = _courses };
+        var dialog = await DialogSvc.ShowAsync<AssignCourseDialog>("Przypisz do kursów", parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true });
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is IEnumerable<Guid> courseIds)
+        {
+            try
+            {
+                var safeCourseIdsList = courseIds.ToList(); 
+                var success = await RegSvc.AssignToCourseAsync(reg.Id, safeCourseIdsList);
+                if (success)
+                {
+                    reg.Status = "assigned_to_course";
+                    await RegSvc.UpdateAsync(reg);
+
+                    Snackbar.Add("Kandydat zarejestrowany na wybrane kursy!", Severity.Success);
+                    await LoadDataAsync(); 
+                }
+                else 
+                {
+                    Snackbar.Add("Błąd podczas przypisywania", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error assigning to course: {ex.Message}");
+                Snackbar.Add("Wystąpił błąd systemu. Spróbuj ponownie.", Severity.Error);
+            }
+        }
+    }
+
+    private async Task OpenStatusDialog(CandidateRegistration reg, string newStatus)
+    {
+        var activeEnrollments = GetEnrollmentsFor(reg).Where(e => e.Status == "Active").ToList();
+
+        var parameters = new DialogParameters
+        {
+            ["Model"] = reg,
+            ["TargetStatus"] = newStatus,
+            ["ActiveEnrollments"] = activeEnrollments
+        };
+        var title = newStatus == "finished" ? "Zakończ kurs" : (newStatus == "dropped" ? "Skreśl z listy" : (newStatus == "remove_course" ? "Usuń z kursu (Pomyłka)" : "Anuluj rejestrację"));
+
+        var dialog = await DialogSvc.ShowAsync<ChangeStatusDialog>(title, parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+
+        if (result.Canceled || result.Data is not ChangeStatusDialog.StatusChangeResult statusResult)
+            return;
+
+        if (newStatus == "canceled")
+        {
+            reg.Status = "canceled";
+            if (!string.IsNullOrWhiteSpace(statusResult.Notes))
+            {
+                reg.RegistrationNotes = string.IsNullOrWhiteSpace(reg.RegistrationNotes)
+                    ? $"Powód anulowania: {statusResult.Notes}"
+                    : $"{reg.RegistrationNotes} | Powód anulowania: {statusResult.Notes}";
+            }
+
+            var regSuccess = await RegSvc.UpdateAsync(reg);
+            if (regSuccess)
+            {
+                Snackbar.Add("Status został zaktualizowany.", Severity.Success);
+                await LoadDataAsync();
+            }
+            else Snackbar.Add("Błąd podczas aktualizacji", Severity.Error);
+            return;
+        }
+
+        if (statusResult.EnrollmentId is null) return;
+        var enrollment = _enrollments.FirstOrDefault(e => e.Id == statusResult.EnrollmentId);
+        if (enrollment is null) return;
+
+        if (newStatus == "remove_course")
+        {
+            var successDelete = await EnrollSvc.DeleteAsync(enrollment.Id);
+            if (successDelete)
+            {
+                if (GetEnrollmentsFor(reg).Count == 1)
+                {
+                    reg.Status = "new";
+                    await RegSvc.UpdateAsync(reg);
+                }
+                Snackbar.Add("Przypisanie do kursu zostało usunięte.", Severity.Success);
+                await LoadDataAsync();
+            }
+            else Snackbar.Add("Błąd podczas usuwania z kursu.", Severity.Error);
+            return;
+        }
+
+        enrollment.Status = newStatus == "finished" ? "Finished" : "Dropped";
+        if (!string.IsNullOrWhiteSpace(statusResult.Notes))
+        {
+            string prefix = newStatus == "finished" ? "Uwagi końcowe:" : "Powód skreślenia:";
+            enrollment.Notes = string.IsNullOrWhiteSpace(enrollment.Notes) ? $"{prefix} {statusResult.Notes}" : $"{enrollment.Notes} | {prefix} {statusResult.Notes}";
+        }
+
+        enrollment.Student = null;
+        enrollment.Course = null;
+
+        var success = await EnrollSvc.UpdateAsync(enrollment);
+        if (success)
+        {
+            Snackbar.Add("Status kursu został zaktualizowany.", Severity.Success);
+            await LoadDataAsync();
+        }
+        else Snackbar.Add("Błąd podczas aktualizacji", Severity.Error);
+    }
+
+    private async Task DeleteCandidate(CandidateRegistration reg)
+    {
+        var confirmed = await DialogSvc.ShowMessageBox("Potwierdzenie usunięcia", $"Czy na pewno chcesz trwale usunąć kandydata «{reg.FullName}»?", yesText: "Tak, usuń", cancelText: "Anuluj");
+        if (confirmed == true)
+        {
+            var success = await RegSvc.DeleteAsync(reg.Id);
+            if (success)
+            {
+                Snackbar.Add("Kandydat został trwale usunięty.", Severity.Success);
+                await LoadDataAsync();
+            }
+            else Snackbar.Add("Błąd podczas usuwania.", Severity.Error);
+        }
+    }
+}

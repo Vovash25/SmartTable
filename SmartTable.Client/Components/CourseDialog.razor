@@ -1,0 +1,59 @@
+@inject SmartTable.Client.Services.LocalizationService LocalizationSvc
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_isValid">
+            <MudGrid Spacing="3">
+                
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="Model.CourseType"
+                                  Label="@LocalizationSvc.GetString("CourseType")"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  RequiredError="Введіть тип курсу" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="Model.Language"
+                                  Label="@LocalizationSvc.GetString("Language_col")"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  RequiredError="Введіть мову" />
+                </MudItem>
+
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Color="Color.Default" Variant="Variant.Text">
+            @LocalizationSvc.GetString("Cancel")
+        </MudButton>
+        <MudButton OnClick="Submit"
+                   Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   Disabled="!_isValid">
+            @(IsNew ? LocalizationSvc.GetString("Add") : LocalizationSvc.GetString("Save"))
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = null!;
+    
+    [Parameter] public Course Model { get; set; } = new();
+    [Parameter] public bool IsNew { get; set; }
+
+    private MudForm _form = null!;
+    private bool _isValid;
+
+    private async Task Submit()
+    {
+        await _form.Validate();
+        if (_isValid)
+        {
+            MudDialog.Close(DialogResult.Ok(Model));
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

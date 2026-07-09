@@ -1,0 +1,212 @@
+@inject ISnackbar Snackbar
+@inject SmartTable.Client.Services.LocalizationService LocalizationSvc
+
+
+<MudDialog Style="min-height:520px;">
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_isValid">
+            <MudGrid Spacing="3">
+
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="Guid" @bind-Value="Model.StudentId"
+                               Label="@LocalizationSvc.GetString("Student")"
+                               Variant="Variant.Outlined"
+                               Required="true"
+                               RequiredError="Оберіть студента"
+                               AnchorOrigin="Origin.BottomCenter">
+                        @foreach (var student in Students)
+                        {
+                            <MudSelectItem Value="@student.Id">@student.FullName</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="Guid" @bind-Value="Model.CourseId"
+                               Label="@LocalizationSvc.GetString("Course")"
+                               Variant="Variant.Outlined"
+                               Required="true"
+                               RequiredError="Оберіть курс"
+                               AnchorOrigin="Origin.BottomCenter">
+                        @foreach (var course in Courses)
+                        {
+                            <MudSelectItem Value="@course.Id">@($"{course.CourseType} ({course.Language})")</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudDatePicker @bind-Date="_arrivalDate"
+                                   Label="@LocalizationSvc.GetString("ArrivalDate")"
+                                   Variant="Variant.Outlined"
+                                   DateFormat="dd.MM.yyyy"
+                                   Required="true"
+                                   AdornmentIcon="@Icons.Material.Filled.CalendarToday" />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudSelect @bind-Value="Model.PaymentMethod"
+                               Label="@LocalizationSvc.GetString("PaymentMethod")"
+                               Variant="Variant.Outlined">
+                        <MudSelectItem Value="@("Gotówka")">Готівка (Gotówka)</MudSelectItem>
+                        <MudSelectItem Value="@("Przelew")">Переказ (Przelew)</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudText Typo="Typo.subtitle2" Color="Color.Primary" Class="mb-2">
+                        <MudIcon Icon="@Icons.Material.Filled.Payments" Size="Size.Small" Class="mr-1" />
+                        Вартість послуг
+                    </MudText>
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <SmartPriceField Label="@LocalizationSvc.GetString("CoursePrice")"
+                                     @bind-Value="_coursePrice"
+                                     Presets="_coursePricePresets"
+                                     Required="true" />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <SmartPriceField Label="@LocalizationSvc.GetString("MedicalExam")"
+                                     @bind-Value="_medicalPrice"
+                                     Presets="_examPricePresets"
+                                     Placeholder="@LocalizationSvc.GetString("LeaveEmptyIfOwn")" />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <SmartPriceField Label="@LocalizationSvc.GetString("PsychologicalExam")"
+                                     @bind-Value="_psychPrice"
+                                     Presets="_examPricePresets" />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <SmartPriceField Label="@LocalizationSvc.GetString("Translation")"
+                                     @bind-Value="_translationPrice"
+                                     Presets="_translationPresets" />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <SmartPriceField Label="PKZ"
+                                     @bind-Value="_pkzPrice"
+                                     Presets="_pkzPresets" />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <SmartPriceField Label="@LocalizationSvc.GetString("PowerOfAttorney")"
+                                     @bind-Value="_powerOfAttorneyPrice"
+                                     Presets="new[]{ 20m, 50m }" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudStack Row="true" Spacing="4" AlignItems="AlignItems.Center">
+                        <MudSwitch @bind-Value="Model.HasInvoice"
+                                   Color="Color.Primary"
+                                   Label="Faktura (рахунок)" />
+                        <MudSwitch @bind-Value="Model.NeedsHotel"
+                                   Color="Color.Warning"
+                                   Label="Hotel" />
+                    </MudStack>
+                </MudItem>
+
+                @if (Model.NeedsHotel)
+                {
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="Model.HotelStayRange"
+                                      Label="@LocalizationSvc.GetString("HotelStayRange")"
+                                      Variant="Variant.Outlined"
+                                      Placeholder="10.07 – 14.07" />
+                    </MudItem>
+                }
+
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="Model.CompanyName"
+                                  Label="@LocalizationSvc.GetString("CompanyName")"
+                                  Variant="Variant.Outlined"
+                                  Placeholder="LOG, HEGELMAN або порожньо" />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudSelect @bind-Value="Model.Status"
+                               Label="@LocalizationSvc.GetString("Status")"
+                               Variant="Variant.Outlined">
+                        <MudSelectItem Value="@("Active")">Active</MudSelectItem>
+                        <MudSelectItem Value="@("Completed")">Completed</MudSelectItem>
+                        <MudSelectItem Value="@("Cancelled")">Cancelled</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="Model.Notes"
+                                  Label="@LocalizationSvc.GetString("Notes")"
+                                  Variant="Variant.Outlined"
+                                  Lines="2"
+                                  Placeholder="rozl. 3430 z Olą" />
+                </MudItem>
+
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Color="Color.Default" Variant="Variant.Text">@LocalizationSvc.GetString("Cancel")</MudButton>
+        <MudButton OnClick="Submit"
+                   Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   Disabled="!_isValid">
+            @(IsNew ? LocalizationSvc.GetString("Add") : LocalizationSvc.GetString("Save"))
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public Enrollment Model    { get; set; } = new();
+    [Parameter] public bool       IsNew    { get; set; }
+    [Parameter] public List<Student> Students  { get; set; } = new();
+    [Parameter] public List<Course>  Courses   { get; set; } = new();
+
+    private MudForm _form    = null!;
+    private bool    _isValid;
+
+    private DateTime? _arrivalDate;
+    private decimal? _coursePrice;
+    private decimal? _medicalPrice;
+    private decimal? _psychPrice;
+    private decimal? _translationPrice;
+    private decimal? _pkzPrice;
+    private decimal? _powerOfAttorneyPrice;
+
+    private decimal[] _coursePricePresets = { 800, 1200, 1800, 2600, 3200 };
+    private decimal[] _examPricePresets   = { 150, 200, 230, 280 };
+    private decimal[] _translationPresets = { 100, 150, 200 };
+    private decimal[] _pkzPresets         = { 50, 100, 150 };
+
+    protected override void OnInitialized()
+    {
+        _arrivalDate          = Model.ArrivalDate != default ? Model.ArrivalDate : DateTime.Today;
+        _coursePrice          = Model.CoursePrice > 0 ? Model.CoursePrice : 800;
+        _medicalPrice         = Model.MedicalExamPrice;
+        _psychPrice           = Model.PsychologicalExamPrice;
+        _translationPrice     = Model.TranslationPrice;
+        _pkzPrice             = Model.PkzPrice;
+        _powerOfAttorneyPrice = Model.PowerOfAttorneyPrice;
+    }
+
+    private async Task Submit()
+    {
+        await _form.Validate();
+        if (!_isValid) return;
+
+        Model.ArrivalDate            = _arrivalDate ?? DateTime.Today;
+        Model.CoursePrice            = _coursePrice ?? 0;
+        Model.MedicalExamPrice       = _medicalPrice;
+        Model.PsychologicalExamPrice = _psychPrice;
+        Model.TranslationPrice       = _translationPrice;
+        Model.PkzPrice               = _pkzPrice;
+        Model.PowerOfAttorneyPrice   = _powerOfAttorneyPrice;
+
+        MudDialog.Close(DialogResult.Ok(Model));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

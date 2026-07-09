@@ -1,0 +1,59 @@
+@page "/admin/logs"
+@attribute [Authorize(Roles = "SuperAdmin")]
+@inject IAuditService AuditSvc
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+@inject SmartTable.Client.Services.LocalizationService LocalizationSvc
+
+<PageTitle>Аудит Логи — SmartTable</PageTitle>
+
+<AuthorizeView Roles="SuperAdmin" Context="authContext">
+    <Authorized>
+        <div class="d-flex align-center justify-space-between mb-4">
+            <div>
+                <MudText Typo="Typo.h5" Style="font-weight:700; color:#7C8CF8;">
+                    <MudIcon Icon="@Icons.Material.Filled.ManageSearch" Class="mr-2" />
+                    Аудит Логи
+                </MudText>
+            </div>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadLogsAsync">Оновити</MudButton>
+        </div>
+
+        <MudDataGrid T="AuditLog" Items="_logs" RowClick="OnRowClick" Loading="_loading">
+            <Columns>
+                <PropertyColumn Property="x => x.ChangedBy" Title="Користувач" />
+                <PropertyColumn Property="x => x.EntityType" Title="Сутність" />
+                <PropertyColumn Property="x => x.Action" Title="Дія" />
+                <TemplateColumn Title="Перейти" Context="col">
+                    <CellTemplate>
+                        <MudIconButton Icon="@Icons.Material.Filled.OpenInNew" 
+                                       OnClick="@(() => NavigateToEntity(col.Item))" />
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+        </MudDataGrid>
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    private List<AuditLog> _logs = new();
+    private bool _loading;
+
+    protected override async Task OnInitializedAsync() => await LoadLogsAsync();
+
+    private async Task LoadLogsAsync() {
+        _loading = true;
+        try { _logs = await AuditSvc.GetLogsAsync(); }
+        catch { Snackbar.Add("Помилка завантаження", Severity.Error); }
+        finally { _loading = false; }
+    }
+
+    private void OnRowClick(DataGridRowClickEventArgs<AuditLog> args) => NavigateToEntity(args.Item);
+
+    private void NavigateToEntity(AuditLog log) {
+        // Ми видалили MouseEventArgs, оскільки він не потрібен для навігації
+        // і викликав помилку компіляції.
+        var url = AuditSvc.GetNavigationUrl(log);
+        Nav.NavigateTo(url);
+    }
+}

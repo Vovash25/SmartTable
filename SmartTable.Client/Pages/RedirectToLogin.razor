@@ -1,0 +1,9 @@
+@* Покладіть цей файл поруч з App.razor (наприклад, у корінь проєкту SmartTable.Client) *@
+@inject NavigationManager Nav
+
+@code {
+    protected override void OnInitialized()
+    {
+        Nav.NavigateTo("/login");
+    }
+}

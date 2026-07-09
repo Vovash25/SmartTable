@@ -1,0 +1,116 @@
+@using SmartTable.Client.Models
+
+<MudDialog>
+    <DialogContent>
+        <MudText Class="mb-4">
+            Kandydat: <strong>@Model.FullName</strong><br/>
+            Akcja: <strong>@ActionName</strong>
+        </MudText>
+        
+        @* Вибір курсу для фінішу, викреслення або видалення помилки *@
+        @if (TargetStatus == "finished" || TargetStatus == "dropped" || TargetStatus == "remove_course")
+        {
+            <MudSelect T="Guid?" @bind-Value="_selectedEnrollmentId"
+                       Label="Wybierz kurs"
+                       Variant="Variant.Outlined"
+                       Required="true"
+                       RequiredError="Musisz wybrać kurs"
+                       Class="mb-4">
+                @foreach (var enrollment in ActiveEnrollments)
+                {
+                    <MudSelectItem T="Guid?" Value="@enrollment.Id">
+                        @($"{enrollment.Course?.CourseType} {enrollment.Course?.Language}".Trim())
+                    </MudSelectItem>
+                }
+            </MudSelect>
+
+            @if (!ActiveEnrollments.Any())
+            {
+                <MudAlert Severity="Severity.Warning" Class="mb-4" Dense="true">
+                    Brak aktywnych kursów do wyboru.
+                </MudAlert>
+            }
+        }
+
+        @if (TargetStatus != "remove_course")
+        {
+            <MudTextField @bind-Value="_notes" 
+                          Label="@NotesLabel" 
+                          Variant="Variant.Outlined" 
+                          Lines="3" 
+                          Required="@IsReasonRequired" 
+                          RequiredError="Musisz podać powód!" 
+                          Placeholder="@PlaceholderText" />
+        }
+        else
+        {
+            <MudText Typo="Typo.body2" Color="Color.Error" Class="mb-4">
+                Ta akcja trwale usunie przypisanie kandydata do wybranego kursu. Używaj tylko w przypadku pomyłki!
+            </MudText>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Color="Color.Default">Wróć</MudButton>
+        <MudButton Color="@ButtonColor" Variant="Variant.Filled" OnClick="Submit" 
+                   Disabled="@(IsInvalid)">
+            Potwierdź
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public CandidateRegistration Model { get; set; } = new();
+    [Parameter] public string TargetStatus { get; set; } = string.Empty;
+    [Parameter] public List<Enrollment> ActiveEnrollments { get; set; } = new();
+
+    private string _notes = string.Empty;
+    private Guid? _selectedEnrollmentId;
+
+    private bool IsReasonRequired => TargetStatus == "canceled" || TargetStatus == "dropped";
+    
+    private bool IsInvalid => 
+        (IsReasonRequired && string.IsNullOrWhiteSpace(_notes)) || 
+        ((TargetStatus == "finished" || TargetStatus == "dropped" || TargetStatus == "remove_course") && _selectedEnrollmentId is null);
+
+    private string ActionName => TargetStatus switch {
+        "canceled" => "Anulowanie rejestracji",
+        "dropped" => "Skreślenie z listy studentów",
+        "finished" => "Zakończenie kursu",
+        "remove_course" => "Usunięcie przypisania (pomyłka)",
+        _ => "Zmiana statusu"
+    };
+
+    private string NotesLabel => TargetStatus == "finished" ? "Uwagi (opcjonalnie)" : "Powód (wymagane)";
+    private string PlaceholderText => TargetStatus == "finished" ? "Np. Certyfikat wydany..." : "Podaj powód...";
+    private Color ButtonColor => TargetStatus == "finished" ? Color.Info : Color.Error;
+
+    protected override void OnInitialized()
+    {
+        if (ActiveEnrollments.Count == 1)
+        {
+            _selectedEnrollmentId = ActiveEnrollments.First().Id;
+        }
+    }
+
+    private void Submit()
+    {
+        if (IsInvalid) return;
+
+        var result = new StatusChangeResult 
+        { 
+            Notes = _notes, 
+            EnrollmentId = _selectedEnrollmentId
+        };
+        
+        MudDialog.Close(DialogResult.Ok(result));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    public class StatusChangeResult
+    {
+        public string Notes { get; set; } = string.Empty;
+        public Guid? EnrollmentId { get; set; }
+    }
+}

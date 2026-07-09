@@ -1,0 +1,75 @@
+@using System.Globalization
+
+<MudAutocomplete T="decimal?"
+                 Label="@Label"
+                 Value="_value"
+                 ValueChanged="OnValueChanged"
+                 SearchFunc="SearchPrices"
+                 ToStringFunc="FormatValue"
+                 Variant="Variant.Outlined"
+                 Placeholder="@(Placeholder ?? "Виберіть або введіть суму")"
+                 Immediate="true"
+                 CoerceText="false"
+                 CoerceValue="false"
+                 MinCharacters="0"
+                 AdornmentIcon="@Icons.Material.Filled.AttachMoney"
+                 Required="@Required"
+                 RequiredError="@(Required ? (RequiredError ?? "Обов'язкове поле") : null)"
+                 Clearable="true"
+                 ResetValueOnEmptyText="true"
+                 DebounceInterval="150" />
+
+@code {
+    [Parameter] public decimal[] Presets { get; set; } = Array.Empty<decimal>();
+    [Parameter] public string Label { get; set; } = "Ціна";
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public string? RequiredError { get; set; }
+
+    [Parameter] public decimal? Value { get; set; }
+    [Parameter] public EventCallback<decimal?> ValueChanged { get; set; }
+
+    private decimal? _value;
+
+    protected override void OnParametersSet()
+    {
+        _value = Value;
+    }
+
+    private Task<IEnumerable<decimal?>> SearchPrices(string input, CancellationToken _)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+            return Task.FromResult(Presets.Select(x => (decimal?)x));
+
+        var normalized = Normalize(input);
+
+        var items = Presets
+            .Where(p => FormatNumber(p).Contains(normalized, StringComparison.OrdinalIgnoreCase))
+            .Select(p => (decimal?)p)
+            .ToList();
+
+        if (TryParseDecimal(normalized, out var parsed) && !Presets.Contains(parsed))
+            items.Insert(0, parsed);
+
+        return Task.FromResult(items.AsEnumerable());
+    }
+
+    private async Task OnValueChanged(decimal? value)
+    {
+        _value = value;
+        await ValueChanged.InvokeAsync(value);
+    }
+
+    private static string Normalize(string value)
+        => value.Trim().Replace(" ", string.Empty).Replace(",", ".");
+
+    private static bool TryParseDecimal(string value, out decimal result)
+        => decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out result)
+           || decimal.TryParse(value, NumberStyles.Number, CultureInfo.CurrentCulture, out result);
+
+    private static string FormatValue(decimal? value)
+        => value.HasValue ? FormatNumber(value.Value) : string.Empty;
+
+    private static string FormatNumber(decimal value)
+        => value.ToString("0.##", CultureInfo.InvariantCulture);
+}

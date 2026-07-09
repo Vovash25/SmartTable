@@ -1,0 +1,40 @@
+@using SmartTable.Client.Models
+
+<MudDialog>
+    <DialogContent>
+        <MudText Class="mb-4">
+            Podaj powód anulowania rejestracji dla kandydata: <strong>@Model.FullName</strong>
+        </MudText>
+        
+        <MudTextField @bind-Value="_cancelReason" 
+                      Label="Powód anulowania" 
+                      Variant="Variant.Outlined" 
+                      Lines="3" 
+                      Required="true" 
+                      RequiredError="Musisz podać powód anulowania!" 
+                      Placeholder="Niestety, kandydat zrezygnował..." />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Color="Color.Default">Wróć</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="Submit" Disabled="@string.IsNullOrWhiteSpace(_cancelReason)">
+            Potwierdź anulowanie
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public CandidateRegistration Model { get; set; } = new();
+
+    private string _cancelReason = string.Empty;
+
+    private void Submit()
+    {
+        if (!string.IsNullOrWhiteSpace(_cancelReason))
+        {
+            MudDialog.Close(DialogResult.Ok(_cancelReason));
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

@@ -1,0 +1,511 @@
+@page "/students"
+@using SmartTable.Client.Models
+@inject IStudentService StudentSvc
+@inject IEnrollmentService EnrollSvc
+@inject IRegistrationService RegSvc
+@inject IDialogService DialogSvc
+@inject ISnackbar Snackbar
+@inject SmartTable.Client.Services.LocalizationService LocalizationSvc
+@implements IDisposable
+
+<PageTitle>Studenci — SmartTable</PageTitle>
+
+<div class="d-flex align-center justify-space-between mb-4">
+    <div>
+        <MudText Typo="Typo.h5" Style="font-weight:700;">Studenci (Obsługa po przyjeździe)</MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary">
+            Wszystkich studentów: @_students.Count — nowi studenci pojawiają się automatycznie po przypisaniu kandydata do kursu na stronie Kandydaci
+        </MudText>
+    </div>
+</div>
+
+<MudTextField @bind-Value="_searchTerm"
+              Placeholder="Szukaj po imieniu, nazwisku, PKK, obywatelstwie lub kursie..."
+              Adornment="Adornment.Start"
+              AdornmentIcon="@Icons.Material.Filled.Search"
+              Variant="Variant.Outlined"
+              Immediate="true"
+              DebounceInterval="250"
+              Class="mb-4"
+              Style="max-width:480px;" />
+
+<MudDataGrid T="Student"
+             Items="FilteredStudents"
+             SortMode="SortMode.Multiple"
+             Hover="true"
+             Striped="true"
+             Dense="true"
+             Loading="_loading">
+    <Columns>
+        <HierarchyColumn T="Student" />
+        <PropertyColumn Property="x => x.FullName" Title="Imię i nazwisko" />
+        <PropertyColumn Property="x => x.PkkNumber" Title="PKK" />
+
+        <TemplateColumn Title="Kursy">
+            <CellTemplate>
+                @{ var enrolls = GetEnrollmentsFor(context.Item); }
+                @if (enrolls.Any())
+                {
+                    <MudStack Spacing="1">
+                        @foreach (var e in enrolls)
+                        {
+                            <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                                <MudText Typo="Typo.body2">@($"{e.Course?.CourseType} {e.Course?.Language}".Trim())</MudText>
+                                <MudChip T="string" Size="Size.Small" Color="@EnrollmentStatusColor(e.Status)">@EnrollmentStatusLabel(e.Status)</MudChip>
+                            </MudStack>
+                        }
+                    </MudStack>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Brak aktywnych kursów</MudText>
+                }
+            </CellTemplate>
+        </TemplateColumn>
+
+        <TemplateColumn Title="Status ogólny">
+            <CellTemplate>
+                @{ var overall = GetOverallStatus(context.Item); }
+                <MudChip T="string" Color="@overall.Color" Size="Size.Small">@overall.Label</MudChip>
+            </CellTemplate>
+        </TemplateColumn>
+
+        <TemplateColumn Title="Obecność">
+            <CellTemplate>
+                @{ var e = GetEnrollmentsFor(context.Item).FirstOrDefault(x => x.Status == "Active") ?? GetEnrollmentsFor(context.Item).FirstOrDefault(); }
+                @if (e is null)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">—</MudText>
+                }
+                else
+                {
+                    <MudChip T="string" Size="Size.Small" Color="@AttendanceColor(e.AttendanceStatus)">@AttendanceLabel(e.AttendanceStatus)</MudChip>
+                }
+            </CellTemplate>
+        </TemplateColumn>
+
+        <TemplateColumn Title="Płatności">
+            <CellTemplate>
+                @{
+                    var enrolls = GetEnrollmentsFor(context.Item);
+                    var due = enrolls.Sum(AmountDue);
+                    var paid = enrolls.Sum(x => x.AmountPaid);
+                }
+                @if (!enrolls.Any())
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">—</MudText>
+                }
+                else
+                {
+                    <MudChip T="string" Size="Size.Small" Color="@PaymentSummaryColor(due, paid)">
+                        @($"{paid:0.##} / {due:0.##} zł")
+                    </MudChip>
+                }
+            </CellTemplate>
+        </TemplateColumn>
+
+        <TemplateColumn Title="Akcja" CellStyle="width:120px;">
+            <CellTemplate>
+                <MudStack Row="true" Spacing="1">
+                    <MudTooltip Text="Edytuj dane podstawowe">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="@(() => OpenEditDialog(context.Item))" />
+                    </MudTooltip>
+                    <MudTooltip Text="Usuń studenta">
+                        <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteStudent(context.Item))" />
+                    </MudTooltip>
+                </MudStack>
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+
+    @* KARTA STUDENTA — jedna karta na każdy zapisany kurs (Etap 3, sekcja 5.2–5.10) *@
+    <ChildRowContent>
+        @{ var studentEnrollments = GetEnrollmentsFor(context.Item); }
+        @if (!studentEnrollments.Any())
+        {
+            <MudAlert Severity="Severity.Info" Dense="true" Class="my-2">
+                Ten student nie ma jeszcze przypisanego żadnego kursu. Przypisanie odbywa się na stronie Kandydaci.
+            </MudAlert>
+        }
+        else
+        {
+            @foreach (var enrollment in studentEnrollments)
+            {
+                <MudCard Elevation="0" Class="pa-4 my-2" Style="background-color: var(--mud-palette-background-grey); border-radius: 8px;">
+                    <div class="d-flex align-center justify-space-between mb-2">
+                        <MudText Typo="Typo.subtitle1" Color="Color.Primary">
+                            <MudIcon Icon="@Icons.Material.Filled.School" Size="Size.Small" Class="mr-1 mb-1" />
+                            @($"{enrollment.Course?.CourseType} {enrollment.Course?.Language}".Trim())
+                        </MudText>
+                        <MudChip T="string" Size="Size.Small" Color="@EnrollmentStatusColor(enrollment.Status)">@EnrollmentStatusLabel(enrollment.Status)</MudChip>
+                    </div>
+
+                    <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4">
+
+                        @* ── SEKCJA A + B: Obecność i Dokumenty ───────────────────────── *@
+                        <MudTabPanel Text="Obecność i dokumenty">
+                            <MudGrid>
+                                <MudItem xs="12" sm="6">
+                                    <MudText Typo="Typo.subtitle2" Class="mb-2">Obecność</MudText>
+                                    <MudSelect T="string" @bind-Value="enrollment.AttendanceStatus" Label="Status obecności" Variant="Variant.Outlined" Dense="true">
+                                        <MudSelectItem Value="@("waiting_arrival")">Oczekuje na przyjazd</MudSelectItem>
+                                        <MudSelectItem Value="@("arrived")">Dojechał</MudSelectItem>
+                                        <MudSelectItem Value="@("no_show")">Nie dojechał</MudSelectItem>
+                                        <MudSelectItem Value="@("late")">Spóźniony</MudSelectItem>
+                                    </MudSelect>
+                                    <MudDatePicker @bind-Date="enrollment.ArrivalDate" Label="Data przyjazdu" Variant="Variant.Outlined" Dense="true" Class="mt-3" />
+                                </MudItem>
+                                <MudItem xs="12" sm="6">
+                                    <MudText Typo="Typo.subtitle2" Class="mb-2">Dokumenty</MudText>
+                                    <MudSelect T="string" @bind-Value="enrollment.DocumentsStatus" Label="Status dokumentów" Variant="Variant.Outlined" Dense="true">
+                                        <MudSelectItem Value="@("not_checked")">Nie sprawdzono</MudSelectItem>
+                                        <MudSelectItem Value="@("missing")">Brak</MudSelectItem>
+                                        <MudSelectItem Value="@("partial")">Częściowo</MudSelectItem>
+                                        <MudSelectItem Value="@("received")">Otrzymano</MudSelectItem>
+                                        <MudSelectItem Value="@("not_required")">Niewymagane</MudSelectItem>
+                                    </MudSelect>
+                                    <MudStack Spacing="4" Class="mt-3">
+                                        <MudCheckBox T="bool" @bind-Value="enrollment.DocPassport" Label="Paszport" Dense="true" />
+                                        <MudCheckBox T="bool" @bind-Value="enrollment.DocDrivingLicense" Label="Prawo jazdy" Dense="true" />
+                                        <MudCheckBox T="bool" @bind-Value="enrollment.DocPkk" Label="PKK / PKZ" Dense="true" />
+                                        <MudCheckBox T="bool" @bind-Value="enrollment.DocMedical" Label="Badania" Dense="true" />
+                                    </MudStack>
+                                </MudItem>
+                            </MudGrid>
+                        </MudTabPanel>
+
+                        @* ── SEKCJA C: Płatności ──────────────────────────────────────── *@
+                        <MudTabPanel Text="Płatności">
+                            <MudGrid>
+                                <MudItem xs="12" sm="3">
+                                    <MudSelect T="string" @bind-Value="enrollment.PaymentStatus" Label="Status płatności" Variant="Variant.Outlined" Dense="true">
+                                        <MudSelectItem Value="@("unpaid")">Nie zapłacono</MudSelectItem>
+                                        <MudSelectItem Value="@("partial")">Częściowo zapłacono</MudSelectItem>
+                                        <MudSelectItem Value="@("paid")">Zapłacono</MudSelectItem>
+                                        <MudSelectItem Value="@("overpaid")">Nadpłata</MudSelectItem>
+                                        <MudSelectItem Value="@("not_required")">Niewymagane</MudSelectItem>
+                                    </MudSelect>
+                                    <MudButton Variant="Variant.Text" Size="Size.Small" Class="mt-1"
+                                               StartIcon="@Icons.Material.Filled.AutoFixHigh"
+                                               OnClick="@(() => enrollment.PaymentStatus = SuggestPaymentStatus(enrollment))">
+                                        Sugerowany: @PaymentLabel(SuggestPaymentStatus(enrollment))
+                                    </MudButton>
+                                </MudItem>
+                                <MudItem xs="12" sm="3">
+                                    <MudSelect T="string" @bind-Value="enrollment.PaymentMethod" Label="Metoda płatności" Variant="Variant.Outlined" Dense="true">
+                                        <MudSelectItem Value="@("cash")">Gotówka</MudSelectItem>
+                                        <MudSelectItem Value="@("bank_transfer")">Przelew</MudSelectItem>
+                                        <MudSelectItem Value="@("company")">Firma płaci</MudSelectItem>
+                                        <MudSelectItem Value="@("mixed")">Mieszane</MudSelectItem>
+                                        <MudSelectItem Value="@("other")">Inne</MudSelectItem>
+                                    </MudSelect>
+                                    <MudCheckBox T="bool" @bind-Value="enrollment.HasInvoice" Label="Faktura" Dense="true" Class="mt-2" />
+                                </MudItem>
+                                <MudItem xs="12" sm="3">
+                                    <MudNumericField T="decimal" @bind-Value="enrollment.CoursePrice" Label="Cena kursu (PLN)" Variant="Variant.Outlined" Dense="true" Format="0.##" />
+                                    <MudNumericField T="decimal" @bind-Value="enrollment.AmountPaid" Label="Kwota zapłacona (PLN)" Variant="Variant.Outlined" Dense="true" Class="mt-3" Format="0.##" />
+                                </MudItem>
+                                <MudItem xs="12" sm="3">
+                                    <MudAlert Severity="@(Remaining(enrollment) > 0 ? Severity.Warning : Remaining(enrollment) < 0 ? Severity.Info : Severity.Success)" Dense="true">
+                                        @(Remaining(enrollment) > 0
+                                            ? $"Pozostało: {Remaining(enrollment):0.##} zł"
+                                            : Remaining(enrollment) < 0
+                                                ? $"Nadpłata: {-Remaining(enrollment):0.##} zł"
+                                                : "Zapłacono całość")
+                                    </MudAlert>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1 d-block">
+                                        Do zapłaty razem z usługami: @AmountDue(enrollment).ToString("0.##") zł
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="12">
+                                    <MudTextField T="string" @bind-Value="enrollment.PaymentNotes" Label="Uwagi do płatności" Variant="Variant.Outlined" Lines="2" />
+                                </MudItem>
+                            </MudGrid>
+                        </MudTabPanel>
+
+                        @* ── SEKCJA D + E: Usługi dodatkowe i Hotel ───────────────────── *@
+                        <MudTabPanel Text="Usługi i hotel">
+                            <MudGrid>
+                                <MudItem xs="12" sm="6">
+                                    <MudText Typo="Typo.subtitle2" Class="mb-2">Usługi dodatkowe</MudText>
+                                    <MudStack Spacing="4">
+                                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="6">
+                                            <MudCheckBox T="bool" @bind-Value="enrollment.SvcMedical" Label="Badania lekarskie" Dense="true" />
+                                            <MudNumericField T="decimal?" @bind-Value="enrollment.MedicalExamPrice" Variant="Variant.Outlined" Dense="true" Format="0.##" Adornment="Adornment.End" AdornmentText="zł" Style="max-width:140px;" />
+                                        </MudStack>
+                                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="6">
+                                            <MudCheckBox T="bool" @bind-Value="enrollment.SvcPsychological" Label="Badania psychologiczne" Dense="true" />
+                                            <MudNumericField T="decimal?" @bind-Value="enrollment.PsychologicalExamPrice" Variant="Variant.Outlined" Dense="true" Format="0.##" Adornment="Adornment.End" AdornmentText="zł" Style="max-width:140px;" />
+                                        </MudStack>
+                                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="6">
+                                            <MudCheckBox T="bool" @bind-Value="enrollment.SvcTranslation" Label="Tłumaczenie" Dense="true" />
+                                            <MudNumericField T="decimal?" @bind-Value="enrollment.TranslationPrice" Variant="Variant.Outlined" Dense="true" Format="0.##" Adornment="Adornment.End" AdornmentText="zł" Style="max-width:140px;" />
+                                        </MudStack>
+                                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="6">
+                                            <MudCheckBox T="bool" @bind-Value="enrollment.SvcPowerOfAttorney" Label="Pełnomocnictwo" Dense="true" />
+                                            <MudNumericField T="decimal?" @bind-Value="enrollment.PowerOfAttorneyPrice" Variant="Variant.Outlined" Dense="true" Format="0.##" Adornment="Adornment.End" AdornmentText="zł" Style="max-width:140px;" />
+                                        </MudStack>
+                                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="6">
+                                            <MudText Typo="Typo.body2" Style="min-width:170px;">PKK / PKZ (opłata)</MudText>
+                                            <MudNumericField T="decimal?" @bind-Value="enrollment.PkzPrice" Variant="Variant.Outlined" Dense="true" Format="0.##" Adornment="Adornment.End" AdornmentText="zł" Style="max-width:140px;" />
+                                        </MudStack>
+                                    </MudStack>
+                                </MudItem>
+                                <MudItem xs="12" sm="6">
+                                    <MudText Typo="Typo.subtitle2" Class="mb-2">Hotel</MudText>
+                                    <MudCheckBox T="bool" @bind-Value="enrollment.NeedsHotel" Label="Potrzebny hotel" Dense="true" Class="mb-2" />
+                                    <MudSelect T="string" @bind-Value="enrollment.HotelStatus" Label="Status hotelu" Variant="Variant.Outlined" Dense="true">
+                                        <MudSelectItem Value="@("not_required")">Niewymagany</MudSelectItem>
+                                        <MudSelectItem Value="@("needed")">Potrzebny</MudSelectItem>
+                                        <MudSelectItem Value="@("reserved")">Zarezerwowany</MudSelectItem>
+                                        <MudSelectItem Value="@("checked_in")">Zakwaterowany</MudSelectItem>
+                                        <MudSelectItem Value="@("cancelled")">Anulowany</MudSelectItem>
+                                    </MudSelect>
+                                    <div class="d-flex gap-2 mt-3">
+                                        <MudDatePicker @bind-Date="enrollment.HotelFrom" Label="Od" Variant="Variant.Outlined" Dense="true" />
+                                        <MudDatePicker @bind-Date="enrollment.HotelTo" Label="Do" Variant="Variant.Outlined" Dense="true" />
+                                    </div>
+                                    <MudTextField T="string" @bind-Value="enrollment.HotelStayRange" Label="Zakres pobytu (tekst, opcjonalnie)" Variant="Variant.Outlined" Dense="true" Class="mt-3" />
+                                </MudItem>
+                            </MudGrid>
+                        </MudTabPanel>
+
+                        @* ── SEKCJA F + G: Status końcowy i uwagi biura ───────────────── *@
+                        <MudTabPanel Text="Status końcowy">
+                            <MudGrid>
+                                <MudItem xs="12" sm="6">
+                                    <MudSelect T="string" @bind-Value="enrollment.Status" Label="Status kursu" Variant="Variant.Outlined" Dense="true">
+                                        <MudSelectItem Value="@("Active")">W trakcie</MudSelectItem>
+                                        <MudSelectItem Value="@("Finished")">Skończone</MudSelectItem>
+                                        <MudSelectItem Value="@("Dropped")">Skreślony</MudSelectItem>
+                                    </MudSelect>
+                                </MudItem>
+                                <MudItem xs="12" sm="6">
+                                    <MudTextField T="string" @bind-Value="enrollment.Notes" Label="Uwagi biura" Variant="Variant.Outlined" Lines="2" Placeholder="Tylko sytuacje niestandardowe..." />
+                                </MudItem>
+                            </MudGrid>
+                        </MudTabPanel>
+
+                    </MudTabs>
+
+                    <div class="d-flex justify-end mt-3">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save"
+                                   OnClick="@(() => SaveEnrollment(enrollment))">
+                            Zapisz dane
+                        </MudButton>
+                    </div>
+                </MudCard>
+            }
+        }
+    </ChildRowContent>
+
+    <NoRecordsContent>
+        <MudText Color="Color.Secondary">Brak studentów w bazie</MudText>
+    </NoRecordsContent>
+</MudDataGrid>
+
+@code {
+    private List<Student> _students = new();
+    private List<Enrollment> _enrollments = new();
+    private List<CandidateRegistration> _candidates = new();
+    private string _searchTerm = string.Empty;
+    private bool _loading = true;
+
+    private IEnumerable<Student> FilteredStudents => _students.Where(s =>
+        string.IsNullOrWhiteSpace(_searchTerm) ||
+        (s.FullName?.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+        (s.PkkNumber?.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+        (s.Citizenship?.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+        GetEnrollmentsFor(s).Any(e =>
+            (e.Course?.CourseType?.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (e.Course?.Language?.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ?? false)));
+
+    private List<Enrollment> GetEnrollmentsFor(Student student) =>
+        _enrollments.Where(e => e.StudentId == student.Id).ToList();
+
+    // ── Status ogólny (zsynchronizowany z logiką strony Kandydaci) ──────────────
+    private (Color Color, string Label) GetOverallStatus(Student student)
+    {
+        var enrolls = GetEnrollmentsFor(student);
+        var candidate = _candidates.FirstOrDefault(c => string.Equals(c.FullName, student.FullName, StringComparison.OrdinalIgnoreCase));
+
+        if (candidate?.Status == "canceled")
+            return (Color.Error, "Anulowany");
+
+        var hasActive = enrolls.Any(e => e.Status == "Active");
+        var hasFinished = enrolls.Any(e => e.Status == "Finished");
+        var hasDropped = enrolls.Any(e => e.Status == "Dropped");
+
+        if (hasActive || !enrolls.Any())
+            return (Color.Success, "Zarejestrowany");
+        if (hasFinished)
+            return (Color.Info, "Skończone");
+        if (hasDropped)
+            return (Color.Dark, "Skreślony");
+
+        return (Color.Success, "Zarejestrowany");
+    }
+
+    private static string EnrollmentStatusLabel(string status) => status switch
+    {
+        "Active" => "W trakcie",
+        "Finished" => "Skończone",
+        "Dropped" => "Skreślony",
+        _ => status
+    };
+
+    private static Color EnrollmentStatusColor(string status) => status switch
+    {
+        "Active" => Color.Warning,
+        "Finished" => Color.Info,
+        "Dropped" => Color.Dark,
+        _ => Color.Default
+    };
+
+    private static string AttendanceLabel(string status) => status switch
+    {
+        "waiting_arrival" => "Oczekuje na przyjazd",
+        "arrived" => "Dojechał",
+        "no_show" => "Nie dojechał",
+        "late" => "Spóźniony",
+        _ => status
+    };
+
+    private static Color AttendanceColor(string status) => status switch
+    {
+        "waiting_arrival" => Color.Default,
+        "arrived" => Color.Success,
+        "no_show" => Color.Error,
+        "late" => Color.Warning,
+        _ => Color.Default
+    };
+
+    private static string PaymentLabel(string status) => status switch
+    {
+        "unpaid" => "Nie zapłacono",
+        "partial" => "Częściowo zapłacono",
+        "paid" => "Zapłacono",
+        "overpaid" => "Nadpłata",
+        "not_required" => "Niewymagane",
+        _ => status
+    };
+
+    private static Color PaymentSummaryColor(decimal due, decimal paid)
+    {
+        if (due <= 0) return Color.Default;
+        if (paid <= 0) return Color.Error;
+        if (paid < due) return Color.Warning;
+        if (paid == due) return Color.Success;
+        return Color.Info;
+    }
+
+    // Kwota do zapłaty = cena kursu + zaznaczone usługi dodatkowe + opłata PKK/PKZ
+    private static decimal AmountDue(Enrollment e) =>
+        e.CoursePrice
+        + (e.SvcMedical ? (e.MedicalExamPrice ?? 0) : 0)
+        + (e.SvcPsychological ? (e.PsychologicalExamPrice ?? 0) : 0)
+        + (e.SvcTranslation ? (e.TranslationPrice ?? 0) : 0)
+        + (e.SvcPowerOfAttorney ? (e.PowerOfAttorneyPrice ?? 0) : 0)
+        + (e.PkzPrice ?? 0);
+
+    private static decimal Remaining(Enrollment e) => AmountDue(e) - e.AmountPaid;
+
+    private static string SuggestPaymentStatus(Enrollment e)
+    {
+        var due = AmountDue(e);
+        if (due <= 0) return "not_required";
+        if (e.AmountPaid <= 0) return "unpaid";
+        if (e.AmountPaid < due) return "partial";
+        if (e.AmountPaid == due) return "paid";
+        return "overpaid";
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        LocalizationSvc.OnLanguageChanged += StateHasChanged;
+        await LoadStudentsAsync();
+    }
+
+    public void Dispose()
+    {
+        LocalizationSvc.OnLanguageChanged -= StateHasChanged;
+    }
+
+    private async Task LoadStudentsAsync()
+    {
+        _loading = true;
+        try
+        {
+            _students = await StudentSvc.GetAllAsync();
+            _enrollments = await EnrollSvc.GetAllAsync();
+            _candidates = await RegSvc.GetAllAsync();
+        }
+        catch { Snackbar.Add("Błąd ładowania", Severity.Error); }
+        finally { _loading = false; }
+    }
+
+    private async Task SaveEnrollment(Enrollment enrollment)
+    {
+        // Nie wysyłamy powiązanych obiektów nawigacyjnych (jak w EnrollmentsController)
+        var student = enrollment.Student;
+        var course = enrollment.Course;
+        enrollment.Student = null;
+        enrollment.Course = null;
+
+        var success = await EnrollSvc.UpdateAsync(enrollment);
+
+        enrollment.Student = student;
+        enrollment.Course = course;
+
+        if (success)
+            Snackbar.Add("Dane kursu studenta zostały zapisane.", Severity.Success);
+        else
+            Snackbar.Add("Błąd podczas zapisywania danych.", Severity.Error);
+    }
+
+    // Studenci pojawiają się tu wyłącznie poprzez przypisanie kandydata do kursu
+    // na stronie Kandydaci — dlatego jest tylko edycja danych podstawowych, bez dodawania.
+    private async Task OpenEditDialog(Student s)
+    {
+        var model = new Student
+        {
+            Id = s.Id,
+            FullName = s.FullName,
+            Citizenship = s.Citizenship,
+            PkkNumber = s.PkkNumber,
+            DateOfBirth = s.DateOfBirth,
+            CreatedAt = s.CreatedAt
+        };
+
+        var parameters = new DialogParameters { ["Model"] = model, ["IsNew"] = false };
+        var dialog = await DialogSvc.ShowAsync<StudentDialog>(
+            "Edytuj dane", parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true });
+
+        var result = await dialog.Result;
+        if (!result.Canceled && result.Data is Student saved)
+        {
+            var success = await StudentSvc.UpdateAsync(saved);
+            if (success)
+            {
+                Snackbar.Add("Zapisano pomyślnie", Severity.Success);
+                await LoadStudentsAsync();
+            }
+            else Snackbar.Add("Błąd zapisywania", Severity.Error);
+        }
+    }
+
+    private async Task DeleteStudent(Student student)
+    {
+        var confirmed = await DialogSvc.ShowMessageBox("Potwierdzenie usunięcia", $"Usunąć studenta «{student.FullName}»?", yesText: "Tak", cancelText: "Anuluj");
+        if (confirmed == true)
+        {
+            var ok = await StudentSvc.DeleteAsync(student.Id);
+            if (ok)
+            {
+                Snackbar.Add("Usunięto", Severity.Success);
+                await LoadStudentsAsync();
+            }
+            else Snackbar.Add("Błąd usuwania", Severity.Error);
+        }
+    }
+}

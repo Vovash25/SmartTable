@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SmartTable</title>
+    <base href="/" />
+
+    <!-- Inter font (Google Fonts) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icons/7.2.3/css/flag-icons.min.css">
+    <!-- MudBlazor styles -->
+    <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
+
+    <!-- Material Icons (required by MudBlazor) -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+
+    <style>
+        /* Force dark scrollbar in Chromium */
+        :root { color-scheme: dark; }
+
+        html, body {
+            background-color: #0F1117;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', system-ui, sans-serif;
+        }
+
+        /* Subtle scrollbar styling */
+        ::-webkit-scrollbar        { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track  { background: #13161F; }
+        ::-webkit-scrollbar-thumb  { background: #2A2D3E; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #7C8CF8; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- Loading state shown before Blazor WASM boots -->
+        <div style="display:flex; align-items:center; justify-content:center;
+                    height:100vh; background:#0F1117; color:#8B8FA8;
+                    font-family:'Inter',sans-serif; font-size:0.875rem; letter-spacing:0.1em;">
+            ЗАВАНТАЖЕННЯ SMARTTABLE...
+        </div>
+    </div>
+
+    <div id="blazor-error-ui" style="display:none; padding:0.6rem 1rem;
+         background:#F87171; color:#fff; position:fixed; bottom:0; width:100%; z-index:9999;">
+        Сталася помилка. 
+        <a href="" style="color:#fff; font-weight:600;">Перезавантажити</a>
+        <a onclick="document.querySelector('#blazor-error-ui').style.display='none'"
+           style="float:right; cursor:pointer; color:#fff;">✕</a>
+    </div>
+
+    <script src="_framework/blazor.webassembly.js"></script>
+    <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+</body>
+</html>

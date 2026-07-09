@@ -1,0 +1,94 @@
+@page "/login"
+@layout EmptyLayout
+@attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+@using SmartTable.Client.Services
+@inject AuthService AuthSvc
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>Logowanie — SmartTable</PageTitle>
+
+<div class="d-flex align-center justify-center" style="min-height: 80vh;">
+    <MudPaper Elevation="4" Class="pa-8" Style="max-width:380px; width:100%; border-radius:12px;">
+        <MudText Typo="Typo.h5" Style="font-weight:700;" Class="mb-1">SMART<span style="color:var(--mud-palette-primary);">TABLE</span></MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-6">Zaloguj się, aby kontynuować</MudText>
+
+        <MudForm @ref="_form" Model="_model">
+            <MudTextField T="string"
+                          @bind-Value="_model.Username"
+                          Label="Login"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          Class="mb-4"
+                          Immediate="true" />
+
+            <MudTextField T="string"
+                          @bind-Value="_model.Password"
+                          Label="Hasło"
+                          Variant="Variant.Outlined"
+                          InputType="@(_showPassword ? InputType.Text : InputType.Password)"
+                          Adornment="Adornment.End"
+                          AdornmentIcon="@(_showPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                          OnAdornmentClick="@(() => _showPassword = !_showPassword)"
+                          Required="true"
+                          Immediate="true"
+                          @onkeyup="HandleKeyUp" />
+
+            <MudButton Variant="Variant.Filled"
+                      Color="Color.Primary"
+                      FullWidth="true"
+                      Class="mt-6"
+                      Disabled="_loading"
+                      OnClick="Submit">
+                @if (_loading)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                }
+                Zaloguj się
+            </MudButton>
+        </MudForm>
+    </MudPaper>
+</div>
+
+@code {
+    private MudForm _form = null!;
+    private readonly LoginModel _model = new();
+    private bool _loading;
+    private bool _showPassword;
+
+    private class LoginModel
+    {
+        public string Username { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+    }
+
+    private async Task HandleKeyUp(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await Submit();
+        }
+    }
+
+    private async Task Submit()
+    {
+        if (string.IsNullOrWhiteSpace(_model.Username) || string.IsNullOrWhiteSpace(_model.Password))
+        {
+            Snackbar.Add("Wpisz login i hasło.", Severity.Warning);
+            return;
+        }
+
+        _loading = true;
+        var result = await AuthSvc.LoginAsync(_model.Username, _model.Password);
+        _loading = false;
+
+        if (result.Success)
+        {
+            Nav.NavigateTo("/", forceLoad: false);
+        }
+        else
+        {
+            Snackbar.Add(result.ErrorMessage ?? "Błąd logowania.", Severity.Error);
+        }
+    }
+}

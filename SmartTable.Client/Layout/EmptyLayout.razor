@@ -1,0 +1,10 @@
+@* Покладіть у Layout/EmptyLayout.razor (поруч з MainLayout.razor) *@
+@inherits LayoutComponentBase
+
+<MudThemeProvider Theme="@(new MudTheme())" IsDarkMode="true" />
+<MudPopoverProvider />
+<MudSnackbarProvider />
+
+<div style="min-height:100vh; background:var(--mud-palette-background);">
+    @Body
+</div>

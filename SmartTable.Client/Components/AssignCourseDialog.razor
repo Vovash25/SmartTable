@@ -1,0 +1,52 @@
+@using SmartTable.Client.Models
+
+<MudDialog>
+    <DialogContent>
+        <MudText Class="mb-4">
+            Wybierz kursy dla kandydata: <strong>@Candidate.FullName</strong>
+        </MudText>
+        
+        <MudForm @ref="_form" @bind-IsValid="_isValid">
+            <MudSelect T="Guid" @bind-SelectedValues="_selectedCourseIds"
+                       MultiSelection="true"
+                       SelectAll="true"
+                       SelectAllText="Wybierz wszystkie"
+                       Label="Oznacz kursy (można kilka)"
+                       Variant="Variant.Outlined"
+                       Required="true"
+                       RequiredError="Musisz wybrać przynajmniej jeden kurs">
+                @foreach (var course in Courses)
+                {
+                    <MudSelectItem T="Guid" Value="@course.Id">@($"{course.CourseType} - {course.Language}")</MudSelectItem>
+                }
+            </MudSelect>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Color="Color.Default">Anuluj</MudButton>
+        <MudButton Color="Color.Success" Variant="Variant.Filled" OnClick="Submit" Disabled="!_selectedCourseIds.Any()">
+            Przypisz do kursów
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public CandidateRegistration Candidate { get; set; } = new();
+    [Parameter] public List<Course> Courses { get; set; } = new();
+
+    private MudForm _form = null!;
+    private bool _isValid;
+    private IEnumerable<Guid> _selectedCourseIds = new HashSet<Guid>();
+
+    private async Task Submit()
+    {
+        await _form.Validate();
+        if (_isValid && _selectedCourseIds.Any())
+        {
+            MudDialog.Close(DialogResult.Ok(_selectedCourseIds));
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

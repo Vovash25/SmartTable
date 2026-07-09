@@ -1,0 +1,17 @@
+@* App.razor *@
+<Router AppAssembly="@typeof(App).Assembly">
+    <Found Context="routeData">
+        <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+            <NotAuthorized>
+                <RedirectToLogin />
+            </NotAuthorized>
+        </AuthorizeRouteView>
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <PageTitle>404 — SmartTable</PageTitle>
+        <LayoutView Layout="@typeof(MainLayout)">
+            <MudAlert Severity="Severity.Error">Сторінку не знайдено (404)</MudAlert>
+        </LayoutView>
+    </NotFound>
+</Router>

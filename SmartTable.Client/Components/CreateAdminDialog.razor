@@ -1,0 +1,37 @@
+@* Покладіть у Components/CreateAdminDialog.razor (або туди, де у вас інші діалоги) *@
+<MudDialog>
+    <DialogContent>
+        <MudTextField T="string" @bind-Value="_username" Label="Login" Variant="Variant.Outlined" Class="mb-4" Immediate="true" />
+        <MudTextField T="string" @bind-Value="_password" Label="Hasło" Variant="Variant.Outlined"
+                      InputType="@(_showPassword ? InputType.Text : InputType.Password)"
+                      Adornment="Adornment.End"
+                      AdornmentIcon="@(_showPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                      OnAdornmentClick="@(() => _showPassword = !_showPassword)"
+                      HelperText="Minimum 8 znaków"
+                      Immediate="true" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Anuluj</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">Utwórz</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudDialogInstance MudDialog { get; set; } = null!;
+
+    private string _username = string.Empty;
+    private string _password = string.Empty;
+    private bool _showPassword;
+
+    private void Submit()
+    {
+        if (string.IsNullOrWhiteSpace(_username) || string.IsNullOrWhiteSpace(_password))
+        {
+            return;
+        }
+
+        MudDialog.Close(DialogResult.Ok((_username.Trim(), _password)));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}
