@@ -1,4 +1,5 @@
 @using System.Globalization
+@inject SmartTable.Client.Services.LocalizationService LocalizationSvc
 
 <MudAutocomplete T="decimal?"
                  Label="@Label"
@@ -7,21 +8,21 @@
                  SearchFunc="SearchPrices"
                  ToStringFunc="FormatValue"
                  Variant="Variant.Outlined"
-                 Placeholder="@(Placeholder ?? "Виберіть або введіть суму")"
+                 Placeholder="@(Placeholder ?? LocalizationSvc.GetString("ChoosePricePlaceholder"))"
                  Immediate="true"
                  CoerceText="false"
                  CoerceValue="false"
                  MinCharacters="0"
                  AdornmentIcon="@Icons.Material.Filled.AttachMoney"
                  Required="@Required"
-                 RequiredError="@(Required ? (RequiredError ?? "Обов'язкове поле") : null)"
+                 RequiredError="@(Required ? (RequiredError ?? LocalizationSvc.GetString("RequiredField")) : null)"
                  Clearable="true"
                  ResetValueOnEmptyText="true"
                  DebounceInterval="150" />
 
 @code {
     [Parameter] public decimal[] Presets { get; set; } = Array.Empty<decimal>();
-    [Parameter] public string Label { get; set; } = "Ціна";
+    [Parameter] public string Label { get; set; } = "Price";
     [Parameter] public string? Placeholder { get; set; }
     [Parameter] public bool Required { get; set; }
     [Parameter] public string? RequiredError { get; set; }

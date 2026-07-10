@@ -5,18 +5,19 @@
 @inject AuthService AuthSvc
 @inject NavigationManager Nav
 @inject ISnackbar Snackbar
+@inject LocalizationService LocalizationSvc
 
-<PageTitle>Logowanie — SmartTable</PageTitle>
+<PageTitle>@LocalizationSvc.GetString("LoginButton") — SmartTable</PageTitle>
 
 <div class="d-flex align-center justify-center" style="min-height: 80vh;">
     <MudPaper Elevation="4" Class="pa-8" Style="max-width:380px; width:100%; border-radius:12px;">
         <MudText Typo="Typo.h5" Style="font-weight:700;" Class="mb-1">SMART<span style="color:var(--mud-palette-primary);">TABLE</span></MudText>
-        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-6">Zaloguj się, aby kontynuować</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-6">@LocalizationSvc.GetString("LoginToContinue")</MudText>
 
         <MudForm @ref="_form" Model="_model">
             <MudTextField T="string"
                           @bind-Value="_model.Username"
-                          Label="Login"
+                          Label="@LocalizationSvc.GetString("LoginLabel")"
                           Variant="Variant.Outlined"
                           Required="true"
                           Class="mb-4"
@@ -24,7 +25,7 @@
 
             <MudTextField T="string"
                           @bind-Value="_model.Password"
-                          Label="Hasło"
+                          Label="@LocalizationSvc.GetString("PasswordLabel")"
                           Variant="Variant.Outlined"
                           InputType="@(_showPassword ? InputType.Text : InputType.Password)"
                           Adornment="Adornment.End"
@@ -44,7 +45,7 @@
                 {
                     <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
                 }
-                Zaloguj się
+                @LocalizationSvc.GetString("LoginButton")
             </MudButton>
         </MudForm>
     </MudPaper>
@@ -74,7 +75,7 @@
     {
         if (string.IsNullOrWhiteSpace(_model.Username) || string.IsNullOrWhiteSpace(_model.Password))
         {
-            Snackbar.Add("Wpisz login i hasło.", Severity.Warning);
+            Snackbar.Add(LocalizationSvc.GetString("FillLoginPassword"), Severity.Warning);
             return;
         }
 
@@ -88,7 +89,7 @@
         }
         else
         {
-            Snackbar.Add(result.ErrorMessage ?? "Błąd logowania.", Severity.Error);
+            Snackbar.Add(result.ErrorMessage ?? LocalizationSvc.GetString("LoginError"), Severity.Error);
         }
     }
 }

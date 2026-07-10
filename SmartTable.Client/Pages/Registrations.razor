@@ -5,13 +5,13 @@
 @inject SmartTable.Client.Services.LocalizationService LocalizationSvc
 @implements IDisposable
 
-<PageTitle>Rejestracje kandydatów — SmartTable</PageTitle>
+<PageTitle>@LocalizationSvc.GetString("RegistrationsPageTitle") — SmartTable</PageTitle>
 
 <div class="d-flex align-center justify-space-between mb-4">
     <div>
-        <MudText Typo="Typo.h5" Style="font-weight:700;">Rejestracje kandydatów</MudText>
+        <MudText Typo="Typo.h5" Style="font-weight:700;">@LocalizationSvc.GetString("RegistrationsPageTitle")</MudText>
         <MudText Typo="Typo.caption" Color="Color.Secondary">
-            Wszystkich: @_registrations.Count
+            @LocalizationSvc.GetString("Total"): @_registrations.Count
         </MudText>
     </div>
     <MudButton Variant="Variant.Filled"
@@ -19,12 +19,12 @@
                StartIcon="@Icons.Material.Filled.PersonAdd"
                OnClick="OpenAddDialog"
                Disabled="_loading">
-        Dodaj rejestrację
+        @LocalizationSvc.GetString("AddRegistration")
     </MudButton>
 </div>
 
 <MudTextField @bind-Value="_searchTerm"
-              Placeholder="Szukaj po imieniu, nazwisku lub telefonie..."
+              Placeholder="@LocalizationSvc.GetString("SearchByNameOrPhone")"
               Adornment="Adornment.Start"
               AdornmentIcon="@Icons.Material.Filled.Search"
               Variant="Variant.Outlined"
@@ -41,44 +41,44 @@
              Dense="true"
              Loading="_loading">
     <Columns>
-        <PropertyColumn Property="x => x.FullName" Title="Kandydat" />
-        <PropertyColumn Property="x => x.PhoneE164" Title="Telefon" />
-        <PropertyColumn Property="x => x.PrimaryContactMethod" Title="Kontakt" />
+        <PropertyColumn Property="x => x.FullName" Title="@LocalizationSvc.GetString("CandidateCol")" />
+        <PropertyColumn Property="x => x.PhoneE164" Title="@LocalizationSvc.GetString("PhoneCol")" />
+        <PropertyColumn Property="x => x.PrimaryContactMethod" Title="@LocalizationSvc.GetString("ContactCol")" />
         
-        <TemplateColumn Title="Kurs">
+        <TemplateColumn Title="@LocalizationSvc.GetString("Course")">
             <CellTemplate>
                 @($"{context.Item.CourseType} {context.Item.CourseLanguage}")
             </CellTemplate>
         </TemplateColumn>
         
-        <TemplateColumn Title="Preferowany termin">
+        <TemplateColumn Title="@LocalizationSvc.GetString("PreferredTermCol")">
             <CellTemplate>
                 @(context.Item.PreferredCourseDate?.ToString("dd.MM.yyyy") ?? "-")
             </CellTemplate>
         </TemplateColumn>
         
-        <TemplateColumn Title="Firma">
+        <TemplateColumn Title="@LocalizationSvc.GetString("CompanyCol")">
             <CellTemplate>
-                @(context.Item.PayerType == "company" ? context.Item.CompanyName : "prywatnie")
+                @(context.Item.PayerType == "company" ? context.Item.CompanyName : LocalizationSvc.GetString("PrivatelyText"))
             </CellTemplate>
         </TemplateColumn>
         
-        <TemplateColumn Title="Hotel">
+        <TemplateColumn Title="@LocalizationSvc.GetString("HotelCol")">
             <CellTemplate>
-                @(context.Item.NeedsHotel == "yes" ? "Tak" : context.Item.NeedsHotel == "no" ? "Nie" : "Nie wiadomo")
+                @(context.Item.NeedsHotel == "yes" ? LocalizationSvc.GetString("HotelYes") : context.Item.NeedsHotel == "no" ? LocalizationSvc.GetString("HotelNo") : LocalizationSvc.GetString("HotelUnknown"))
             </CellTemplate>
         </TemplateColumn>
         
-        <PropertyColumn Property="x => x.Status" Title="Status" />
+        <PropertyColumn Property="x => x.Status" Title="@LocalizationSvc.GetString("Status")" />
         
-        <TemplateColumn Title="Akcja">
+        <TemplateColumn Title="@LocalizationSvc.GetString("ActionCol")">
             <CellTemplate>
-                <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" OnClick="@(() => OpenEditDialog(context.Item))">Edytuj</MudButton>
+                <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" OnClick="@(() => OpenEditDialog(context.Item))">@LocalizationSvc.GetString("Edit")</MudButton>
             </CellTemplate>
         </TemplateColumn>
     </Columns>
     <NoRecordsContent>
-        <MudText Color="Color.Secondary">Brak rejestracji</MudText>
+        <MudText Color="Color.Secondary">@LocalizationSvc.GetString("NoRegistrationsFound")</MudText>
     </NoRecordsContent>
 </MudDataGrid>
 
@@ -108,20 +108,20 @@
     {
         _loading = true;
         try   { _registrations = await RegSvc.GetAllAsync(); }
-        catch { Snackbar.Add("Błąd ładowania danych", Severity.Error); }
+        catch { Snackbar.Add(LocalizationSvc.GetString("ErrorLoadingData"), Severity.Error); }
         finally { _loading = false; }
     }
 
     private async Task OpenAddDialog()
     {
         var parameters = new DialogParameters { ["Model"] = new CandidateRegistration(), ["IsNew"] = true };
-        await ShowDialogAsync("Dodaj rejestrację", parameters);
+        await ShowDialogAsync(LocalizationSvc.GetString("AddRegistration"), parameters);
     }
 
     private async Task OpenEditDialog(CandidateRegistration reg)
     {
         var parameters = new DialogParameters { ["Model"] = reg, ["IsNew"] = false };
-        await ShowDialogAsync("Edytuj", parameters);
+        await ShowDialogAsync(LocalizationSvc.GetString("Edit"), parameters);
     }
 
     private async Task ShowDialogAsync(string title, DialogParameters parameters)
@@ -140,12 +140,12 @@
 
             if (success)
             {
-                Snackbar.Add("Zapisano pomyślnie", Severity.Success);
+                Snackbar.Add(LocalizationSvc.GetString("SavedSuccessfully"), Severity.Success);
                 await LoadDataAsync();
             }
             else
             {
-                Snackbar.Add("Błąd zapisywania (możliwy duplikat)", Severity.Error);
+                Snackbar.Add(LocalizationSvc.GetString("SaveErrorDuplicate"), Severity.Error);
             }
         }
     }

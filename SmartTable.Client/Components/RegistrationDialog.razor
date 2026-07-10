@@ -1,23 +1,23 @@
 @using CountryData.Standard
+@inject SmartTable.Client.Services.LocalizationService LocalizationSvc
 
 <MudDialog Style="min-height:70vh; min-width: 600px;">
     <DialogContent>
         <MudForm @ref="_form" @bind-IsValid="_isValid">
 
-            <MudText Typo="Typo.h6" Class="mt-2 mb-4" Color="Color.Primary">Dane kandydata</MudText>
+            <MudText Typo="Typo.h6" Class="mt-2 mb-4" Color="Color.Primary">@LocalizationSvc.GetString("CandidateDataHeader")</MudText>
             <MudGrid Spacing="2">
                 <MudItem xs="12">
-                    <MudTextField @bind-Value="Model.FullName" Label="Imię i nazwisko" Required="true" Variant="Variant.Outlined" />
+                    <MudTextField @bind-Value="Model.FullName" Label="@LocalizationSvc.GetString("FullNameLabel")" Required="true" Variant="Variant.Outlined" />
                 </MudItem>
 
                 <MudItem xs="4">
                     <MudSelect T="string"
                                @bind-Value="Model.CountryCode"
-                               Label="Kod kraju"
+                               Label="@LocalizationSvc.GetString("CountryCodeLabel")"
                                Required="true"
                                Variant="Variant.Outlined">
 
-                        <!-- Найпопулярніші -->
                         <MudSelectItem Value="@("+370")"><span class="fi fi-lt" style="margin-right:8px;"></span>+370 (LT)</MudSelectItem>
                         <MudSelectItem Value="@("+48")"><span class="fi fi-pl" style="margin-right:8px;"></span>+48 (PL)</MudSelectItem>
                         <MudSelectItem Value="@("+380")"><span class="fi fi-ua" style="margin-right:8px;"></span>+380 (UA)</MudSelectItem>
@@ -40,11 +40,11 @@
                 </MudItem>
 
                 <MudItem xs="8">
-                    <MudTextField @bind-Value="Model.NationalNumber" Label="Numer telefonu" Required="true" Variant="Variant.Outlined"
-                                  HelperText="Format: 500 111 222 (spacje zostaną usunięte technicznie)" />
+                    <MudTextField @bind-Value="Model.NationalNumber" Label="@LocalizationSvc.GetString("PhoneNumberFieldLabel")" Required="true" Variant="Variant.Outlined"
+                                  HelperText="@LocalizationSvc.GetString("PhoneFormatHelper")" />
                 </MudItem>
                 <MudItem xs="6">
-                    <MudSelect T="string" @bind-Value="Model.PreferredContactLanguage" Label="Język kontaktu" Variant="Variant.Outlined">
+                    <MudSelect T="string" @bind-Value="Model.PreferredContactLanguage" Label="@LocalizationSvc.GetString("ContactLanguageLabel")" Variant="Variant.Outlined">
                         <MudSelectItem Value="@("PL")"><span class="fi fi-pl" style="margin-right:8px;"></span>PL</MudSelectItem>
                         <MudSelectItem Value="@("RUS")"><span class="fi fi-ru" style="margin-right:8px;"></span>RUS</MudSelectItem>
                         <MudSelectItem Value="@("ENG")"><span class="fi fi-gb" style="margin-right:8px;"></span>ENG</MudSelectItem>
@@ -52,126 +52,123 @@
                     </MudSelect>
                 </MudItem>
                 <MudItem xs="6">
-                    <MudSelect T="string" @bind-Value="Model.RegistrationSource" Label="Źródło zgłoszenia" Variant="Variant.Outlined">
-                        <MudSelectItem Value="@("Telefon")">Telefon</MudSelectItem>
-                        <MudSelectItem Value="@("WhatsApp")">WhatsApp</MudSelectItem>
-                        <MudSelectItem Value="@("Firma")">Firma</MudSelectItem>
+                    <MudSelect T="string" @bind-Value="Model.RegistrationSource" Label="@LocalizationSvc.GetString("RegistrationSourceLabel")" Variant="Variant.Outlined">
+                        <MudSelectItem Value="@("Telefon")">@LocalizationSvc.GetString("SourcePhone")</MudSelectItem>
+                        <MudSelectItem Value="@("WhatsApp")">@LocalizationSvc.GetString("SourceWhatsApp")</MudSelectItem>
+                        <MudSelectItem Value="@("Firma")">@LocalizationSvc.GetString("SourceCompany")</MudSelectItem>
                     </MudSelect>
                 </MudItem>
             </MudGrid>
 
             <MudDivider Class="my-6" />
-            <MudText Typo="Typo.h6" Class="mb-4" Color="Color.Primary">Kontakt</MudText>
+            <MudText Typo="Typo.h6" Class="mb-4" Color="Color.Primary">@LocalizationSvc.GetString("ContactHeader")</MudText>
             <MudGrid Spacing="2">
                 <MudItem xs="12">
-                    <MudSelect T="string" @bind-Value="Model.PrimaryContactMethod" Label="Główny sposób kontaktu" Required="true" Variant="Variant.Outlined">
-                        <MudSelectItem Value="@("phone_call")">Telefon</MudSelectItem>
+                    <MudSelect T="string" @bind-Value="Model.PrimaryContactMethod" Label="@LocalizationSvc.GetString("PrimaryContactLabel")" Required="true" Variant="Variant.Outlined">
+                        <MudSelectItem Value="@("phone_call")">@LocalizationSvc.GetString("ContactPhoneCall")</MudSelectItem>
                         <MudSelectItem Value="@("whatsapp")">WhatsApp</MudSelectItem>
-                        <MudSelectItem Value="@("viber")">Viber</MudSelectItem>
-                        <MudSelectItem Value="@("telegram")">Telegram</MudSelectItem>
-                        <MudSelectItem Value="@("messenger")">Messenger</MudSelectItem>
-                        <MudSelectItem Value="@("sms")">SMS</MudSelectItem>
+                        <MudSelectItem Value="@("viber")">@LocalizationSvc.GetString("ContactViber")</MudSelectItem>
+                        <MudSelectItem Value="@("telegram")">@LocalizationSvc.GetString("ContactTelegram")</MudSelectItem>
+                        <MudSelectItem Value="@("messenger")">@LocalizationSvc.GetString("ContactMessenger")</MudSelectItem>
+                        <MudSelectItem Value="@("sms")">@LocalizationSvc.GetString("ContactSms")</MudSelectItem>
                     </MudSelect>
                 </MudItem>
                 <MudItem xs="12">
-                    <MudTextField @bind-Value="Model.ContactNotes" Label="Uwagi do kontaktu" Lines="2" Variant="Variant.Outlined"
-                                  Placeholder="Np. Nie dzwonić po 18:00" />
+                    <MudTextField @bind-Value="Model.ContactNotes" Label="@LocalizationSvc.GetString("ContactNotesLabel")" Lines="2" Variant="Variant.Outlined"
+                                  Placeholder="@LocalizationSvc.GetString("ContactNotesPlaceholder")" />
                 </MudItem>
             </MudGrid>
 
             <MudDivider Class="my-6" />
-            <MudText Typo="Typo.h6" Class="mb-4" Color="Color.Primary">Kurs i termin (Preferowany przez klienta)</MudText>
+            <MudText Typo="Typo.h6" Class="mb-4" Color="Color.Primary">@LocalizationSvc.GetString("CourseAndDateHeader")</MudText>
             <MudGrid Spacing="2">
                 <MudItem xs="12">
-                    <MudSelect @bind-Value="Model.CourseType" Label="Typ kursu" Variant="Variant.Outlined">
-                        @* Ваші існуючі курси *@
+                    <MudSelect @bind-Value="Model.CourseType" Label="@LocalizationSvc.GetString("CourseTypeLabel")" Variant="Variant.Outlined">
                         <MudSelectItem Value="@("KWP")">KWP</MudSelectItem>
                         <MudSelectItem Value="@("SO")">SO</MudSelectItem>
                         <MudSelectItem Value="@("ADR")">ADR</MudSelectItem>
-                        
-                        @* НОВА ОПЦІЯ ДЛЯ КОМЕНТАРІВ *@
-                        <MudSelectItem Value="@("Info")">Info (Tylko notatka)</MudSelectItem>
+                        <MudSelectItem Value="@("Info")">@LocalizationSvc.GetString("CourseInfoOnly")</MudSelectItem>
                     </MudSelect>
                 </MudItem>
                 <MudItem xs="6">
-                    <MudDatePicker @bind-Date="Model.PreferredCourseDate" Label="Preferowany termin kursu" Variant="Variant.Outlined" DateFormat="dd.MM.yyyy" />
+                    <MudDatePicker @bind-Date="Model.PreferredCourseDate" Label="@LocalizationSvc.GetString("PreferredCourseDateLabel")" Variant="Variant.Outlined" DateFormat="dd.MM.yyyy" />
                 </MudItem>
                 <MudItem xs="6">
-                    <MudDatePicker @bind-Date="Model.PlannedArrivalDate" Label="Planowana data przyjazdu" Variant="Variant.Outlined" DateFormat="dd.MM.yyyy" />
+                    <MudDatePicker @bind-Date="Model.PlannedArrivalDate" Label="@LocalizationSvc.GetString("PlannedArrivalDateLabel")" Variant="Variant.Outlined" DateFormat="dd.MM.yyyy" />
                 </MudItem>
                 <MudItem xs="12">
-                    <MudTextField @bind-Value="Model.DateNotes" Label="Uwagi do terminu" Lines="2" Variant="Variant.Outlined" />
+                    <MudTextField @bind-Value="Model.DateNotes" Label="@LocalizationSvc.GetString("DateNotesLabel")" Lines="2" Variant="Variant.Outlined" />
                 </MudItem>
             </MudGrid>
 
             <MudDivider Class="my-6" />
-            <MudText Typo="Typo.h6" Class="mb-4" Color="Color.Primary">Firma</MudText>
+            <MudText Typo="Typo.h6" Class="mb-4" Color="Color.Primary">@LocalizationSvc.GetString("CompanyHeader")</MudText>
             <MudGrid Spacing="2">
                 <MudItem xs="12">
                     <MudRadioGroup T="string" @bind-Value="Model.PayerType" Required="true">
-                        <MudRadio Value="@("private_person")" Color="Color.Primary">Osoba prywatna</MudRadio>
-                        <MudRadio Value="@("company")" Color="Color.Primary">Firma</MudRadio>
-                        <MudRadio Value="@("unknown")" Color="Color.Default">Nie wiadomo</MudRadio>
+                        <MudRadio Value="@("private_person")" Color="Color.Primary">@LocalizationSvc.GetString("PrivatePersonOption")</MudRadio>
+                        <MudRadio Value="@("company")" Color="Color.Primary">@LocalizationSvc.GetString("CompanyOption")</MudRadio>
+                        <MudRadio Value="@("unknown")" Color="Color.Default">@LocalizationSvc.GetString("UnknownOption")</MudRadio>
                     </MudRadioGroup>
                 </MudItem>
                 @if (Model.PayerType == "company")
                 {
                     <MudItem xs="12">
-                        <MudTextField @bind-Value="Model.CompanyName" Label="Firma (Nazwa)" Variant="Variant.Outlined" Required="true" />
+                        <MudTextField @bind-Value="Model.CompanyName" Label="@LocalizationSvc.GetString("CompanyNameFieldLabel")" Variant="Variant.Outlined" Required="true" />
                     </MudItem>
                 }
             </MudGrid>
 
             <MudDivider Class="my-6" />
-            <MudText Typo="Typo.h6" Class="mb-4" Color="Color.Primary">Hotel</MudText>
+            <MudText Typo="Typo.h6" Class="mb-4" Color="Color.Primary">@LocalizationSvc.GetString("HotelDialogHeader")</MudText>
             <MudGrid Spacing="2">
                 <MudItem xs="12">
                     <MudRadioGroup T="string" @bind-Value="Model.NeedsHotel" Required="true">
-                        <MudRadio Value="@("yes")" Color="Color.Primary">Tak</MudRadio>
-                        <MudRadio Value="@("no")" Color="Color.Primary">Nie</MudRadio>
-                        <MudRadio Value="@("unknown")" Color="Color.Default">Nie wiadomo</MudRadio>
+                        <MudRadio Value="@("yes")" Color="Color.Primary">@LocalizationSvc.GetString("HotelYes")</MudRadio>
+                        <MudRadio Value="@("no")" Color="Color.Primary">@LocalizationSvc.GetString("HotelNo")</MudRadio>
+                        <MudRadio Value="@("unknown")" Color="Color.Default">@LocalizationSvc.GetString("UnknownOption")</MudRadio>
                     </MudRadioGroup>
                 </MudItem>
                 @if (Model.NeedsHotel == "yes")
                 {
                     <MudItem xs="6">
-                        <MudDatePicker @bind-Date="Model.HotelFrom" Label="Hotel od" Variant="Variant.Outlined" DateFormat="dd.MM.yyyy" />
+                        <MudDatePicker @bind-Date="Model.HotelFrom" Label="@LocalizationSvc.GetString("HotelFromDialogLabel")" Variant="Variant.Outlined" DateFormat="dd.MM.yyyy" />
                     </MudItem>
                     <MudItem xs="6">
-                        <MudDatePicker @bind-Date="Model.HotelTo" Label="Hotel do" Variant="Variant.Outlined" DateFormat="dd.MM.yyyy" />
+                        <MudDatePicker @bind-Date="Model.HotelTo" Label="@LocalizationSvc.GetString("HotelToDialogLabel")" Variant="Variant.Outlined" DateFormat="dd.MM.yyyy" />
                     </MudItem>
                 }
                 @if (Model.NeedsHotel == "yes" || Model.NeedsHotel == "unknown")
                 {
                     <MudItem xs="12">
-                        <MudTextField @bind-Value="Model.HotelNotes" Label="Uwagi do hotelu" Lines="2" Variant="Variant.Outlined" />
+                        <MudTextField @bind-Value="Model.HotelNotes" Label="@LocalizationSvc.GetString("HotelNotesLabel")" Lines="2" Variant="Variant.Outlined" />
                     </MudItem>
                 }
             </MudGrid>
 
             <MudDivider Class="my-6" />
-            <MudText Typo="Typo.h6" Class="mb-4" Color="Color.Primary">Status i uwagi</MudText>
+            <MudText Typo="Typo.h6" Class="mb-4" Color="Color.Primary">@LocalizationSvc.GetString("StatusAndNotesHeader")</MudText>
             <MudGrid Spacing="2">
                 <MudItem xs="12" sm="6">
-                    <MudSelect T="string" @bind-Value="Model.Status" Label="Status rejestracji" Required="true" Variant="Variant.Outlined">
-                        <MudSelectItem Value="@("new")">Nowe zgłoszenie</MudSelectItem>
-                        <MudSelectItem Value="@("contacted")">Skontaktowano się</MudSelectItem>
-                        <MudSelectItem Value="@("waiting_confirmation")">Oczekuje potwierdzenia</MudSelectItem>
-                        <MudSelectItem Value="@("confirmed")">Potwierdzono</MudSelectItem>
-                        <MudSelectItem Value="@("assigned_to_course")">Przypisano do kursu</MudSelectItem>
+                    <MudSelect T="string" @bind-Value="Model.Status" Label="@LocalizationSvc.GetString("RegistrationStatusLabel")" Required="true" Variant="Variant.Outlined">
+                        <MudSelectItem Value="@("new")">@LocalizationSvc.GetString("RegStatusNew")</MudSelectItem>
+                        <MudSelectItem Value="@("contacted")">@LocalizationSvc.GetString("RegStatusContacted")</MudSelectItem>
+                        <MudSelectItem Value="@("waiting_confirmation")">@LocalizationSvc.GetString("RegStatusWaitingConfirmation")</MudSelectItem>
+                        <MudSelectItem Value="@("confirmed")">@LocalizationSvc.GetString("RegStatusConfirmed")</MudSelectItem>
+                        <MudSelectItem Value="@("assigned_to_course")">@LocalizationSvc.GetString("RegStatusAssigned")</MudSelectItem>
                     </MudSelect>
                 </MudItem>
                 <MudItem xs="12">
-                    <MudTextField @bind-Value="Model.RegistrationNotes" Label="Uwagi do rejestracji" Lines="2" Variant="Variant.Outlined" />
+                    <MudTextField @bind-Value="Model.RegistrationNotes" Label="@LocalizationSvc.GetString("RegistrationNotesLabel")" Lines="2" Variant="Variant.Outlined" />
                 </MudItem>
             </MudGrid>
 
         </MudForm>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel" Color="Color.Default" Variant="Variant.Text">Anuluj</MudButton>
+        <MudButton OnClick="Cancel" Color="Color.Default" Variant="Variant.Text">@LocalizationSvc.GetString("Cancel")</MudButton>
         <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="!_isValid">
-            @(IsNew ? "Zapisz" : "Aktualizuj")
+            @(IsNew ? LocalizationSvc.GetString("Save") : LocalizationSvc.GetString("UpdateButton"))
         </MudButton>
     </DialogActions>
 </MudDialog>
@@ -189,7 +186,6 @@
 
     protected override void OnInitialized()
     {
-        // Якщо це редагування, відновлюємо CourseVariantCode для дропдауна
         if (!string.IsNullOrEmpty(Model.CourseType) && !string.IsNullOrEmpty(Model.CourseLanguage))
         {
             _selectedCourseVariant = $"{Model.CourseType}_{Model.CourseLanguage}";

@@ -1,23 +1,24 @@
 @using SmartTable.Client.Models
+@inject SmartTable.Client.Services.LocalizationService LocalizationSvc
 
 <MudDialog>
     <DialogContent>
         <MudText Class="mb-4">
-            Podaj powód anulowania rejestracji dla kandydata: <strong>@Model.FullName</strong>
+            @LocalizationSvc.GetString("CancelReasonPrompt"): <strong>@Model.FullName</strong>
         </MudText>
         
         <MudTextField @bind-Value="_cancelReason" 
-                      Label="Powód anulowania" 
+                      Label="@LocalizationSvc.GetString("CancelReasonLabel")" 
                       Variant="Variant.Outlined" 
                       Lines="3" 
                       Required="true" 
-                      RequiredError="Musisz podać powód anulowania!" 
-                      Placeholder="Niestety, kandydat zrezygnował..." />
+                      RequiredError="@LocalizationSvc.GetString("CancelReasonRequired")" 
+                      Placeholder="@LocalizationSvc.GetString("CancelReasonPlaceholder")" />
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel" Color="Color.Default">Wróć</MudButton>
+        <MudButton OnClick="Cancel" Color="Color.Default">@LocalizationSvc.GetString("GoBack")</MudButton>
         <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="Submit" Disabled="@string.IsNullOrWhiteSpace(_cancelReason)">
-            Potwierdź anulowanie
+            @LocalizationSvc.GetString("ConfirmCancellation")
         </MudButton>
     </DialogActions>
 </MudDialog>

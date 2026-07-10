@@ -4,8 +4,9 @@
 @inject ISnackbar Snackbar
 @inject NavigationManager Nav
 @inject SmartTable.Client.Services.LocalizationService LocalizationSvc
+@implements IDisposable
 
-<PageTitle>Аудит Логи — SmartTable</PageTitle>
+<PageTitle>@LocalizationSvc.GetString("AuditLogs") — SmartTable</PageTitle>
 
 <AuthorizeView Roles="SuperAdmin" Context="authContext">
     <Authorized>
@@ -13,18 +14,18 @@
             <div>
                 <MudText Typo="Typo.h5" Style="font-weight:700; color:#7C8CF8;">
                     <MudIcon Icon="@Icons.Material.Filled.ManageSearch" Class="mr-2" />
-                    Аудит Логи
+                    @LocalizationSvc.GetString("AuditLogs")
                 </MudText>
             </div>
-            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadLogsAsync">Оновити</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadLogsAsync">@LocalizationSvc.GetString("Refresh")</MudButton>
         </div>
 
         <MudDataGrid T="AuditLog" Items="_logs" RowClick="OnRowClick" Loading="_loading">
             <Columns>
-                <PropertyColumn Property="x => x.ChangedBy" Title="Користувач" />
-                <PropertyColumn Property="x => x.EntityType" Title="Сутність" />
-                <PropertyColumn Property="x => x.Action" Title="Дія" />
-                <TemplateColumn Title="Перейти" Context="col">
+                <PropertyColumn Property="x => x.ChangedBy" Title="@LocalizationSvc.GetString("UserCol")" />
+                <PropertyColumn Property="x => x.EntityType" Title="@LocalizationSvc.GetString("EntityCol")" />
+                <PropertyColumn Property="x => x.Action" Title="@LocalizationSvc.GetString("ActionColLog")" />
+                <TemplateColumn Title="@LocalizationSvc.GetString("GoToCol")" Context="col">
                     <CellTemplate>
                         <MudIconButton Icon="@Icons.Material.Filled.OpenInNew" 
                                        OnClick="@(() => NavigateToEntity(col.Item))" />
@@ -39,20 +40,24 @@
     private List<AuditLog> _logs = new();
     private bool _loading;
 
-    protected override async Task OnInitializedAsync() => await LoadLogsAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        LocalizationSvc.OnLanguageChanged += StateHasChanged;
+        await LoadLogsAsync();
+    }
+
+    public void Dispose() => LocalizationSvc.OnLanguageChanged -= StateHasChanged;
 
     private async Task LoadLogsAsync() {
         _loading = true;
         try { _logs = await AuditSvc.GetLogsAsync(); }
-        catch { Snackbar.Add("Помилка завантаження", Severity.Error); }
+        catch { Snackbar.Add(LocalizationSvc.GetString("ErrorLoadingData"), Severity.Error); }
         finally { _loading = false; }
     }
 
     private void OnRowClick(DataGridRowClickEventArgs<AuditLog> args) => NavigateToEntity(args.Item);
 
     private void NavigateToEntity(AuditLog log) {
-        // Ми видалили MouseEventArgs, оскільки він не потрібен для навігації
-        // і викликав помилку компіляції.
         var url = AuditSvc.GetNavigationUrl(log);
         Nav.NavigateTo(url);
     }

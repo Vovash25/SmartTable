@@ -1,44 +1,45 @@
 @inject ISnackbar Snackbar
+@inject SmartTable.Client.Services.LocalizationService LocalizationSvc
 
 <MudDialog>
     <DialogContent>
         <MudForm @ref="_form" @bind-IsValid="_isValid">
             <MudStack Spacing="3">
                 <MudTextField @bind-Value="Model.FullName"
-                              Label="Повне ім'я (ПІБ)"
+                              Label="@LocalizationSvc.GetString("FullNameLabel")"
                               Variant="Variant.Outlined"
                               Required="true"
-                              RequiredError="Обов'язкове поле"
+                              RequiredError="@LocalizationSvc.GetString("RequiredField")"
                               Immediate="true" />
 
                 <MudDatePicker @bind-Date="_dateOfBirth"
-                               Label="Дата народження"
+                               Label="@LocalizationSvc.GetString("DateOfBirth")"
                                Variant="Variant.Outlined"
                                DateFormat="dd.MM.yyyy"
                                MaxDate="DateTime.Today" />
 
                 <MudTextField @bind-Value="Model.Citizenship"
-                              Label="Громадянство"
+                              Label="@LocalizationSvc.GetString("Citizenship")"
                               Variant="Variant.Outlined"
                               Required="true"
-                              RequiredError="Обов'язкове поле" />
+                              RequiredError="@LocalizationSvc.GetString("RequiredField")" />
 
                 <MudTextField @bind-Value="Model.PkkNumber"
-                              Label="Номер ПКК"
+                              Label="@LocalizationSvc.GetString("PkkNumber")"
                               Variant="Variant.Outlined"
-                              Placeholder="Необов'язково" />
+                              Placeholder="@LocalizationSvc.GetString("OptionalPlaceholder")" />
             </MudStack>
         </MudForm>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel" Color="Color.Default" Variant="Variant.Text">
-            Скасувати
+            @LocalizationSvc.GetString("Cancel")
         </MudButton>
         <MudButton OnClick="Submit"
                    Color="Color.Primary"
                    Variant="Variant.Filled"
                    Disabled="!_isValid">
-            @(IsNew ? "Додати" : "Зберегти")
+            @(IsNew ? LocalizationSvc.GetString("Add") : LocalizationSvc.GetString("Save"))
         </MudButton>
     </DialogActions>
 </MudDialog>
@@ -51,7 +52,6 @@
     private MudForm _form = null!;
     private bool _isValid;
 
-    // MudDatePicker uses DateTime? so we bridge it
     private DateTime? _dateOfBirth
     {
         get => Model.DateOfBirth == default ? null : Model.DateOfBirth;

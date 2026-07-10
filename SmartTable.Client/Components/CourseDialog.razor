@@ -10,7 +10,7 @@
                                   Label="@LocalizationSvc.GetString("CourseType")"
                                   Variant="Variant.Outlined"
                                   Required="true"
-                                  RequiredError="Введіть тип курсу" />
+                                  RequiredError="@LocalizationSvc.GetString("RequiredField")" />
                 </MudItem>
 
                 <MudItem xs="12">
@@ -18,7 +18,7 @@
                                   Label="@LocalizationSvc.GetString("Language_col")"
                                   Variant="Variant.Outlined"
                                   Required="true"
-                                  RequiredError="Введіть мову" />
+                                  RequiredError="@LocalizationSvc.GetString("RequiredField")" />
                 </MudItem>
 
             </MudGrid>

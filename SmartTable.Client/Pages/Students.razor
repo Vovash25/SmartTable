@@ -8,19 +8,19 @@
 @inject SmartTable.Client.Services.LocalizationService LocalizationSvc
 @implements IDisposable
 
-<PageTitle>Studenci — SmartTable</PageTitle>
+<PageTitle>@LocalizationSvc.GetString("StudentsPageTitle") — SmartTable</PageTitle>
 
 <div class="d-flex align-center justify-space-between mb-4">
     <div>
-        <MudText Typo="Typo.h5" Style="font-weight:700;">Studenci (Obsługa po przyjeździe)</MudText>
+        <MudText Typo="Typo.h5" Style="font-weight:700;">@LocalizationSvc.GetString("StudentsPageTitle")</MudText>
         <MudText Typo="Typo.caption" Color="Color.Secondary">
-            Wszystkich studentów: @_students.Count — nowi studenci pojawiają się automatycznie po przypisaniu kandydata do kursu na stronie Kandydaci
+            @LocalizationSvc.GetString("StudentsTotalCaption"): @_students.Count — @LocalizationSvc.GetString("NewStudentsAutoNote")
         </MudText>
     </div>
 </div>
 
 <MudTextField @bind-Value="_searchTerm"
-              Placeholder="Szukaj po imieniu, nazwisku, PKK, obywatelstwie lub kursie..."
+              Placeholder="@LocalizationSvc.GetString("SearchStudents")"
               Adornment="Adornment.Start"
               AdornmentIcon="@Icons.Material.Filled.Search"
               Variant="Variant.Outlined"
@@ -38,10 +38,10 @@
              Loading="_loading">
     <Columns>
         <HierarchyColumn T="Student" />
-        <PropertyColumn Property="x => x.FullName" Title="Imię i nazwisko" />
+        <PropertyColumn Property="x => x.FullName" Title="@LocalizationSvc.GetString("FullNameCol")" />
         <PropertyColumn Property="x => x.PkkNumber" Title="PKK" />
 
-        <TemplateColumn Title="Kursy">
+        <TemplateColumn Title="@LocalizationSvc.GetString("CoursesCol")">
             <CellTemplate>
                 @{ var enrolls = GetEnrollmentsFor(context.Item); }
                 @if (enrolls.Any())
@@ -58,19 +58,19 @@
                 }
                 else
                 {
-                    <MudText Typo="Typo.body2" Color="Color.Secondary">Brak aktywnych kursów</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@LocalizationSvc.GetString("NoActiveCourses")</MudText>
                 }
             </CellTemplate>
         </TemplateColumn>
 
-        <TemplateColumn Title="Status ogólny">
+        <TemplateColumn Title="@LocalizationSvc.GetString("OverallStatusCol")">
             <CellTemplate>
                 @{ var overall = GetOverallStatus(context.Item); }
                 <MudChip T="string" Color="@overall.Color" Size="Size.Small">@overall.Label</MudChip>
             </CellTemplate>
         </TemplateColumn>
 
-        <TemplateColumn Title="Obecność">
+        <TemplateColumn Title="@LocalizationSvc.GetString("AttendanceCol")">
             <CellTemplate>
                 @{ var e = GetEnrollmentsFor(context.Item).FirstOrDefault(x => x.Status == "Active") ?? GetEnrollmentsFor(context.Item).FirstOrDefault(); }
                 @if (e is null)
@@ -84,7 +84,7 @@
             </CellTemplate>
         </TemplateColumn>
 
-        <TemplateColumn Title="Płatności">
+        <TemplateColumn Title="@LocalizationSvc.GetString("PaymentsCol")">
             <CellTemplate>
                 @{
                     var enrolls = GetEnrollmentsFor(context.Item);
@@ -104,13 +104,13 @@
             </CellTemplate>
         </TemplateColumn>
 
-        <TemplateColumn Title="Akcja" CellStyle="width:120px;">
+        <TemplateColumn Title="@LocalizationSvc.GetString("ActionCol")" CellStyle="width:120px;">
             <CellTemplate>
                 <MudStack Row="true" Spacing="1">
-                    <MudTooltip Text="Edytuj dane podstawowe">
+                    <MudTooltip Text="@LocalizationSvc.GetString("EditBasicDataTooltip")">
                         <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="@(() => OpenEditDialog(context.Item))" />
                     </MudTooltip>
-                    <MudTooltip Text="Usuń studenta">
+                    <MudTooltip Text="@LocalizationSvc.GetString("DeleteStudentTooltip")">
                         <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteStudent(context.Item))" />
                     </MudTooltip>
                 </MudStack>
@@ -124,7 +124,7 @@
         @if (!studentEnrollments.Any())
         {
             <MudAlert Severity="Severity.Info" Dense="true" Class="my-2">
-                Ten student nie ma jeszcze przypisanego żadnego kursu. Przypisanie odbywa się na stronie Kandydaci.
+                @LocalizationSvc.GetString("NoCourseAssignedInfo")
             </MudAlert>
         }
         else
@@ -143,145 +143,145 @@
                     <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4">
 
                         @* ── SEKCJA A + B: Obecność i Dokumenty ───────────────────────── *@
-                        <MudTabPanel Text="Obecność i dokumenty">
+                        <MudTabPanel Text="@LocalizationSvc.GetString("AttendanceDocumentsTab")">
                             <MudGrid>
                                 <MudItem xs="12" sm="6">
-                                    <MudText Typo="Typo.subtitle2" Class="mb-2">Obecność</MudText>
-                                    <MudSelect T="string" @bind-Value="enrollment.AttendanceStatus" Label="Status obecności" Variant="Variant.Outlined" Dense="true">
-                                        <MudSelectItem Value="@("waiting_arrival")">Oczekuje na przyjazd</MudSelectItem>
-                                        <MudSelectItem Value="@("arrived")">Dojechał</MudSelectItem>
-                                        <MudSelectItem Value="@("no_show")">Nie dojechał</MudSelectItem>
-                                        <MudSelectItem Value="@("late")">Spóźniony</MudSelectItem>
+                                    <MudText Typo="Typo.subtitle2" Class="mb-2">@LocalizationSvc.GetString("AttendanceHeader")</MudText>
+                                    <MudSelect T="string" @bind-Value="enrollment.AttendanceStatus" Label="@LocalizationSvc.GetString("AttendanceStatusLabel")" Variant="Variant.Outlined" Dense="true">
+                                        <MudSelectItem Value="@("waiting_arrival")">@LocalizationSvc.GetString("ArrivalWaiting")</MudSelectItem>
+                                        <MudSelectItem Value="@("arrived")">@LocalizationSvc.GetString("ArrivalArrived")</MudSelectItem>
+                                        <MudSelectItem Value="@("no_show")">@LocalizationSvc.GetString("ArrivalNoShow")</MudSelectItem>
+                                        <MudSelectItem Value="@("late")">@LocalizationSvc.GetString("ArrivalLate")</MudSelectItem>
                                     </MudSelect>
-                                    <MudDatePicker @bind-Date="enrollment.ArrivalDate" Label="Data przyjazdu" Variant="Variant.Outlined" Dense="true" Class="mt-3" />
+                                    <MudDatePicker @bind-Date="enrollment.ArrivalDate" Label="@LocalizationSvc.GetString("ArrivalDateLabel")" Variant="Variant.Outlined" Dense="true" Class="mt-3" />
                                 </MudItem>
                                 <MudItem xs="12" sm="6">
-                                    <MudText Typo="Typo.subtitle2" Class="mb-2">Dokumenty</MudText>
-                                    <MudSelect T="string" @bind-Value="enrollment.DocumentsStatus" Label="Status dokumentów" Variant="Variant.Outlined" Dense="true">
-                                        <MudSelectItem Value="@("not_checked")">Nie sprawdzono</MudSelectItem>
-                                        <MudSelectItem Value="@("missing")">Brak</MudSelectItem>
-                                        <MudSelectItem Value="@("partial")">Częściowo</MudSelectItem>
-                                        <MudSelectItem Value="@("received")">Otrzymano</MudSelectItem>
-                                        <MudSelectItem Value="@("not_required")">Niewymagane</MudSelectItem>
+                                    <MudText Typo="Typo.subtitle2" Class="mb-2">@LocalizationSvc.GetString("DocumentsHeader")</MudText>
+                                    <MudSelect T="string" @bind-Value="enrollment.DocumentsStatus" Label="@LocalizationSvc.GetString("DocumentsStatusLabel")" Variant="Variant.Outlined" Dense="true">
+                                        <MudSelectItem Value="@("not_checked")">@LocalizationSvc.GetString("DocNotChecked")</MudSelectItem>
+                                        <MudSelectItem Value="@("missing")">@LocalizationSvc.GetString("DocMissing")</MudSelectItem>
+                                        <MudSelectItem Value="@("partial")">@LocalizationSvc.GetString("DocPartial")</MudSelectItem>
+                                        <MudSelectItem Value="@("received")">@LocalizationSvc.GetString("DocReceived")</MudSelectItem>
+                                        <MudSelectItem Value="@("not_required")">@LocalizationSvc.GetString("DocNotRequired")</MudSelectItem>
                                     </MudSelect>
                                     <MudStack Spacing="4" Class="mt-3">
-                                        <MudCheckBox T="bool" @bind-Value="enrollment.DocPassport" Label="Paszport" Dense="true" />
-                                        <MudCheckBox T="bool" @bind-Value="enrollment.DocDrivingLicense" Label="Prawo jazdy" Dense="true" />
-                                        <MudCheckBox T="bool" @bind-Value="enrollment.DocPkk" Label="PKK / PKZ" Dense="true" />
-                                        <MudCheckBox T="bool" @bind-Value="enrollment.DocMedical" Label="Badania" Dense="true" />
+                                        <MudCheckBox T="bool" @bind-Value="enrollment.DocPassport" Label="@LocalizationSvc.GetString("PassportLabel")" Dense="true" />
+                                        <MudCheckBox T="bool" @bind-Value="enrollment.DocDrivingLicense" Label="@LocalizationSvc.GetString("DrivingLicenseLabel")" Dense="true" />
+                                        <MudCheckBox T="bool" @bind-Value="enrollment.DocPkk" Label="@LocalizationSvc.GetString("PkkPkzLabel")" Dense="true" />
+                                        <MudCheckBox T="bool" @bind-Value="enrollment.DocMedical" Label="@LocalizationSvc.GetString("MedicalExamShortLabel")" Dense="true" />
                                     </MudStack>
                                 </MudItem>
                             </MudGrid>
                         </MudTabPanel>
 
                         @* ── SEKCJA C: Płatności ──────────────────────────────────────── *@
-                        <MudTabPanel Text="Płatności">
+                        <MudTabPanel Text="@LocalizationSvc.GetString("PaymentsTab")">
                             <MudGrid>
                                 <MudItem xs="12" sm="3">
-                                    <MudSelect T="string" @bind-Value="enrollment.PaymentStatus" Label="Status płatności" Variant="Variant.Outlined" Dense="true">
-                                        <MudSelectItem Value="@("unpaid")">Nie zapłacono</MudSelectItem>
-                                        <MudSelectItem Value="@("partial")">Częściowo zapłacono</MudSelectItem>
-                                        <MudSelectItem Value="@("paid")">Zapłacono</MudSelectItem>
-                                        <MudSelectItem Value="@("overpaid")">Nadpłata</MudSelectItem>
-                                        <MudSelectItem Value="@("not_required")">Niewymagane</MudSelectItem>
+                                    <MudSelect T="string" @bind-Value="enrollment.PaymentStatus" Label="@LocalizationSvc.GetString("PaymentStatusLabel")" Variant="Variant.Outlined" Dense="true">
+                                        <MudSelectItem Value="@("unpaid")">@LocalizationSvc.GetString("PayUnpaid")</MudSelectItem>
+                                        <MudSelectItem Value="@("partial")">@LocalizationSvc.GetString("PayPartial")</MudSelectItem>
+                                        <MudSelectItem Value="@("paid")">@LocalizationSvc.GetString("PayPaid")</MudSelectItem>
+                                        <MudSelectItem Value="@("overpaid")">@LocalizationSvc.GetString("PayOverpaid")</MudSelectItem>
+                                        <MudSelectItem Value="@("not_required")">@LocalizationSvc.GetString("PayNotRequired")</MudSelectItem>
                                     </MudSelect>
                                     <MudButton Variant="Variant.Text" Size="Size.Small" Class="mt-1"
                                                StartIcon="@Icons.Material.Filled.AutoFixHigh"
                                                OnClick="@(() => enrollment.PaymentStatus = SuggestPaymentStatus(enrollment))">
-                                        Sugerowany: @PaymentLabel(SuggestPaymentStatus(enrollment))
+                                        @LocalizationSvc.GetString("SuggestedLabel"): @PaymentLabel(SuggestPaymentStatus(enrollment))
                                     </MudButton>
                                 </MudItem>
                                 <MudItem xs="12" sm="3">
-                                    <MudSelect T="string" @bind-Value="enrollment.PaymentMethod" Label="Metoda płatności" Variant="Variant.Outlined" Dense="true">
-                                        <MudSelectItem Value="@("cash")">Gotówka</MudSelectItem>
-                                        <MudSelectItem Value="@("bank_transfer")">Przelew</MudSelectItem>
-                                        <MudSelectItem Value="@("company")">Firma płaci</MudSelectItem>
-                                        <MudSelectItem Value="@("mixed")">Mieszane</MudSelectItem>
-                                        <MudSelectItem Value="@("other")">Inne</MudSelectItem>
+                                    <MudSelect T="string" @bind-Value="enrollment.PaymentMethod" Label="@LocalizationSvc.GetString("PaymentMethod")" Variant="Variant.Outlined" Dense="true">
+                                        <MudSelectItem Value="@("cash")">@LocalizationSvc.GetString("PayCash")</MudSelectItem>
+                                        <MudSelectItem Value="@("bank_transfer")">@LocalizationSvc.GetString("PayBankTransfer")</MudSelectItem>
+                                        <MudSelectItem Value="@("company")">@LocalizationSvc.GetString("PayCompany")</MudSelectItem>
+                                        <MudSelectItem Value="@("mixed")">@LocalizationSvc.GetString("PayMixed")</MudSelectItem>
+                                        <MudSelectItem Value="@("other")">@LocalizationSvc.GetString("PayOther")</MudSelectItem>
                                     </MudSelect>
-                                    <MudCheckBox T="bool" @bind-Value="enrollment.HasInvoice" Label="Faktura" Dense="true" Class="mt-2" />
+                                    <MudCheckBox T="bool" @bind-Value="enrollment.HasInvoice" Label="@LocalizationSvc.GetString("InvoiceLabel")" Dense="true" Class="mt-2" />
                                 </MudItem>
                                 <MudItem xs="12" sm="3">
-                                    <MudNumericField T="decimal" @bind-Value="enrollment.CoursePrice" Label="Cena kursu (PLN)" Variant="Variant.Outlined" Dense="true" Format="0.##" />
-                                    <MudNumericField T="decimal" @bind-Value="enrollment.AmountPaid" Label="Kwota zapłacona (PLN)" Variant="Variant.Outlined" Dense="true" Class="mt-3" Format="0.##" />
+                                    <MudNumericField T="decimal" @bind-Value="enrollment.CoursePrice" Label="@LocalizationSvc.GetString("CoursePriceLabel")" Variant="Variant.Outlined" Dense="true" Format="0.##" />
+                                    <MudNumericField T="decimal" @bind-Value="enrollment.AmountPaid" Label="@LocalizationSvc.GetString("AmountPaidLabel")" Variant="Variant.Outlined" Dense="true" Class="mt-3" Format="0.##" />
                                 </MudItem>
                                 <MudItem xs="12" sm="3">
                                     <MudAlert Severity="@(Remaining(enrollment) > 0 ? Severity.Warning : Remaining(enrollment) < 0 ? Severity.Info : Severity.Success)" Dense="true">
                                         @(Remaining(enrollment) > 0
-                                            ? $"Pozostało: {Remaining(enrollment):0.##} zł"
+                                            ? $"{LocalizationSvc.GetString("RemainingLabel")}: {Remaining(enrollment):0.##} zł"
                                             : Remaining(enrollment) < 0
-                                                ? $"Nadpłata: {-Remaining(enrollment):0.##} zł"
-                                                : "Zapłacono całość")
+                                                ? $"{LocalizationSvc.GetString("OverpaidLabel")}: {-Remaining(enrollment):0.##} zł"
+                                                : LocalizationSvc.GetString("FullyPaidLabel"))
                                     </MudAlert>
                                     <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1 d-block">
-                                        Do zapłaty razem z usługami: @AmountDue(enrollment).ToString("0.##") zł
+                                        @LocalizationSvc.GetString("TotalDueWithServicesLabel"): @AmountDue(enrollment).ToString("0.##") zł
                                     </MudText>
                                 </MudItem>
                                 <MudItem xs="12">
-                                    <MudTextField T="string" @bind-Value="enrollment.PaymentNotes" Label="Uwagi do płatności" Variant="Variant.Outlined" Lines="2" />
+                                    <MudTextField T="string" @bind-Value="enrollment.PaymentNotes" Label="@LocalizationSvc.GetString("PaymentNotesLabel")" Variant="Variant.Outlined" Lines="2" />
                                 </MudItem>
                             </MudGrid>
                         </MudTabPanel>
 
                         @* ── SEKCJA D + E: Usługi dodatkowe i Hotel ───────────────────── *@
-                        <MudTabPanel Text="Usługi i hotel">
+                        <MudTabPanel Text="@LocalizationSvc.GetString("ServicesHotelTab")">
                             <MudGrid>
                                 <MudItem xs="12" sm="6">
-                                    <MudText Typo="Typo.subtitle2" Class="mb-2">Usługi dodatkowe</MudText>
+                                    <MudText Typo="Typo.subtitle2" Class="mb-2">@LocalizationSvc.GetString("AdditionalServicesHeader")</MudText>
                                     <MudStack Spacing="4">
                                         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="6">
-                                            <MudCheckBox T="bool" @bind-Value="enrollment.SvcMedical" Label="Badania lekarskie" Dense="true" />
+                                            <MudCheckBox T="bool" @bind-Value="enrollment.SvcMedical" Label="@LocalizationSvc.GetString("MedicalExamCheckboxLabel")" Dense="true" />
                                             <MudNumericField T="decimal?" @bind-Value="enrollment.MedicalExamPrice" Variant="Variant.Outlined" Dense="true" Format="0.##" Adornment="Adornment.End" AdornmentText="zł" Style="max-width:140px;" />
                                         </MudStack>
                                         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="6">
-                                            <MudCheckBox T="bool" @bind-Value="enrollment.SvcPsychological" Label="Badania psychologiczne" Dense="true" />
+                                            <MudCheckBox T="bool" @bind-Value="enrollment.SvcPsychological" Label="@LocalizationSvc.GetString("PsychExamCheckboxLabel")" Dense="true" />
                                             <MudNumericField T="decimal?" @bind-Value="enrollment.PsychologicalExamPrice" Variant="Variant.Outlined" Dense="true" Format="0.##" Adornment="Adornment.End" AdornmentText="zł" Style="max-width:140px;" />
                                         </MudStack>
                                         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="6">
-                                            <MudCheckBox T="bool" @bind-Value="enrollment.SvcTranslation" Label="Tłumaczenie" Dense="true" />
+                                            <MudCheckBox T="bool" @bind-Value="enrollment.SvcTranslation" Label="@LocalizationSvc.GetString("TranslationCheckboxLabel")" Dense="true" />
                                             <MudNumericField T="decimal?" @bind-Value="enrollment.TranslationPrice" Variant="Variant.Outlined" Dense="true" Format="0.##" Adornment="Adornment.End" AdornmentText="zł" Style="max-width:140px;" />
                                         </MudStack>
                                         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="6">
-                                            <MudCheckBox T="bool" @bind-Value="enrollment.SvcPowerOfAttorney" Label="Pełnomocnictwo" Dense="true" />
+                                            <MudCheckBox T="bool" @bind-Value="enrollment.SvcPowerOfAttorney" Label="@LocalizationSvc.GetString("PowerOfAttorneyCheckboxLabel")" Dense="true" />
                                             <MudNumericField T="decimal?" @bind-Value="enrollment.PowerOfAttorneyPrice" Variant="Variant.Outlined" Dense="true" Format="0.##" Adornment="Adornment.End" AdornmentText="zł" Style="max-width:140px;" />
                                         </MudStack>
                                         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="6">
-                                            <MudText Typo="Typo.body2" Style="min-width:170px;">PKK / PKZ (opłata)</MudText>
+                                            <MudText Typo="Typo.body2" Style="min-width:170px;">@LocalizationSvc.GetString("PkkPkzFeeLabel")</MudText>
                                             <MudNumericField T="decimal?" @bind-Value="enrollment.PkzPrice" Variant="Variant.Outlined" Dense="true" Format="0.##" Adornment="Adornment.End" AdornmentText="zł" Style="max-width:140px;" />
                                         </MudStack>
                                     </MudStack>
                                 </MudItem>
                                 <MudItem xs="12" sm="6">
-                                    <MudText Typo="Typo.subtitle2" Class="mb-2">Hotel</MudText>
-                                    <MudCheckBox T="bool" @bind-Value="enrollment.NeedsHotel" Label="Potrzebny hotel" Dense="true" Class="mb-2" />
-                                    <MudSelect T="string" @bind-Value="enrollment.HotelStatus" Label="Status hotelu" Variant="Variant.Outlined" Dense="true">
-                                        <MudSelectItem Value="@("not_required")">Niewymagany</MudSelectItem>
-                                        <MudSelectItem Value="@("needed")">Potrzebny</MudSelectItem>
-                                        <MudSelectItem Value="@("reserved")">Zarezerwowany</MudSelectItem>
-                                        <MudSelectItem Value="@("checked_in")">Zakwaterowany</MudSelectItem>
-                                        <MudSelectItem Value="@("cancelled")">Anulowany</MudSelectItem>
+                                    <MudText Typo="Typo.subtitle2" Class="mb-2">@LocalizationSvc.GetString("HotelHeader")</MudText>
+                                    <MudCheckBox T="bool" @bind-Value="enrollment.NeedsHotel" Label="@LocalizationSvc.GetString("NeedsHotelLabel")" Dense="true" Class="mb-2" />
+                                    <MudSelect T="string" @bind-Value="enrollment.HotelStatus" Label="@LocalizationSvc.GetString("HotelStatusLabel")" Variant="Variant.Outlined" Dense="true">
+                                        <MudSelectItem Value="@("not_required")">@LocalizationSvc.GetString("HotelNotRequired")</MudSelectItem>
+                                        <MudSelectItem Value="@("needed")">@LocalizationSvc.GetString("HotelNeeded")</MudSelectItem>
+                                        <MudSelectItem Value="@("reserved")">@LocalizationSvc.GetString("HotelReserved")</MudSelectItem>
+                                        <MudSelectItem Value="@("checked_in")">@LocalizationSvc.GetString("HotelCheckedIn")</MudSelectItem>
+                                        <MudSelectItem Value="@("cancelled")">@LocalizationSvc.GetString("HotelCancelled")</MudSelectItem>
                                     </MudSelect>
                                     <div class="d-flex gap-2 mt-3">
-                                        <MudDatePicker @bind-Date="enrollment.HotelFrom" Label="Od" Variant="Variant.Outlined" Dense="true" />
-                                        <MudDatePicker @bind-Date="enrollment.HotelTo" Label="Do" Variant="Variant.Outlined" Dense="true" />
+                                        <MudDatePicker @bind-Date="enrollment.HotelFrom" Label="@LocalizationSvc.GetString("HotelFromLabel")" Variant="Variant.Outlined" Dense="true" />
+                                        <MudDatePicker @bind-Date="enrollment.HotelTo" Label="@LocalizationSvc.GetString("HotelToLabel")" Variant="Variant.Outlined" Dense="true" />
                                     </div>
-                                    <MudTextField T="string" @bind-Value="enrollment.HotelStayRange" Label="Zakres pobytu (tekst, opcjonalnie)" Variant="Variant.Outlined" Dense="true" Class="mt-3" />
+                                    <MudTextField T="string" @bind-Value="enrollment.HotelStayRange" Label="@LocalizationSvc.GetString("HotelStayRangeLabel")" Variant="Variant.Outlined" Dense="true" Class="mt-3" />
                                 </MudItem>
                             </MudGrid>
                         </MudTabPanel>
 
                         @* ── SEKCJA F + G: Status końcowy i uwagi biura ───────────────── *@
-                        <MudTabPanel Text="Status końcowy">
+                        <MudTabPanel Text="@LocalizationSvc.GetString("FinalStatusTab")">
                             <MudGrid>
                                 <MudItem xs="12" sm="6">
-                                    <MudSelect T="string" @bind-Value="enrollment.Status" Label="Status kursu" Variant="Variant.Outlined" Dense="true">
-                                        <MudSelectItem Value="@("Active")">W trakcie</MudSelectItem>
-                                        <MudSelectItem Value="@("Finished")">Skończone</MudSelectItem>
-                                        <MudSelectItem Value="@("Dropped")">Skreślony</MudSelectItem>
+                                    <MudSelect T="string" @bind-Value="enrollment.Status" Label="@LocalizationSvc.GetString("CourseStatusLabel")" Variant="Variant.Outlined" Dense="true">
+                                        <MudSelectItem Value="@("Active")">@LocalizationSvc.GetString("CourseInProgress")</MudSelectItem>
+                                        <MudSelectItem Value="@("Finished")">@LocalizationSvc.GetString("StatusFinished")</MudSelectItem>
+                                        <MudSelectItem Value="@("Dropped")">@LocalizationSvc.GetString("StatusDropped")</MudSelectItem>
                                     </MudSelect>
                                 </MudItem>
                                 <MudItem xs="12" sm="6">
-                                    <MudTextField T="string" @bind-Value="enrollment.Notes" Label="Uwagi biura" Variant="Variant.Outlined" Lines="2" Placeholder="Tylko sytuacje niestandardowe..." />
+                                    <MudTextField T="string" @bind-Value="enrollment.Notes" Label="@LocalizationSvc.GetString("OfficeNotesLabel")" Variant="Variant.Outlined" Lines="2" Placeholder="@LocalizationSvc.GetString("OfficeNotesPlaceholder")" />
                                 </MudItem>
                             </MudGrid>
                         </MudTabPanel>
@@ -291,7 +291,7 @@
                     <div class="d-flex justify-end mt-3">
                         <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save"
                                    OnClick="@(() => SaveEnrollment(enrollment))">
-                            Zapisz dane
+                            @LocalizationSvc.GetString("SaveDataButton")
                         </MudButton>
                     </div>
                 </MudCard>
@@ -300,7 +300,7 @@
     </ChildRowContent>
 
     <NoRecordsContent>
-        <MudText Color="Color.Secondary">Brak studentów w bazie</MudText>
+        <MudText Color="Color.Secondary">@LocalizationSvc.GetString("NoStudentsInDb")</MudText>
     </NoRecordsContent>
 </MudDataGrid>
 
@@ -330,27 +330,27 @@
         var candidate = _candidates.FirstOrDefault(c => string.Equals(c.FullName, student.FullName, StringComparison.OrdinalIgnoreCase));
 
         if (candidate?.Status == "canceled")
-            return (Color.Error, "Anulowany");
+            return (Color.Error, LocalizationSvc.GetString("StatusCancelled"));
 
         var hasActive = enrolls.Any(e => e.Status == "Active");
         var hasFinished = enrolls.Any(e => e.Status == "Finished");
         var hasDropped = enrolls.Any(e => e.Status == "Dropped");
 
         if (hasActive || !enrolls.Any())
-            return (Color.Success, "Zarejestrowany");
+            return (Color.Success, LocalizationSvc.GetString("StatusRegistered"));
         if (hasFinished)
-            return (Color.Info, "Skończone");
+            return (Color.Info, LocalizationSvc.GetString("StatusFinished"));
         if (hasDropped)
-            return (Color.Dark, "Skreślony");
+            return (Color.Dark, LocalizationSvc.GetString("StatusDropped"));
 
-        return (Color.Success, "Zarejestrowany");
+        return (Color.Success, LocalizationSvc.GetString("StatusRegistered"));
     }
 
-    private static string EnrollmentStatusLabel(string status) => status switch
+    private string EnrollmentStatusLabel(string status) => status switch
     {
-        "Active" => "W trakcie",
-        "Finished" => "Skończone",
-        "Dropped" => "Skreślony",
+        "Active" => LocalizationSvc.GetString("CourseInProgress"),
+        "Finished" => LocalizationSvc.GetString("StatusFinished"),
+        "Dropped" => LocalizationSvc.GetString("StatusDropped"),
         _ => status
     };
 
@@ -362,12 +362,12 @@
         _ => Color.Default
     };
 
-    private static string AttendanceLabel(string status) => status switch
+    private string AttendanceLabel(string status) => status switch
     {
-        "waiting_arrival" => "Oczekuje na przyjazd",
-        "arrived" => "Dojechał",
-        "no_show" => "Nie dojechał",
-        "late" => "Spóźniony",
+        "waiting_arrival" => LocalizationSvc.GetString("ArrivalWaiting"),
+        "arrived" => LocalizationSvc.GetString("ArrivalArrived"),
+        "no_show" => LocalizationSvc.GetString("ArrivalNoShow"),
+        "late" => LocalizationSvc.GetString("ArrivalLate"),
         _ => status
     };
 
@@ -380,13 +380,13 @@
         _ => Color.Default
     };
 
-    private static string PaymentLabel(string status) => status switch
+    private string PaymentLabel(string status) => status switch
     {
-        "unpaid" => "Nie zapłacono",
-        "partial" => "Częściowo zapłacono",
-        "paid" => "Zapłacono",
-        "overpaid" => "Nadpłata",
-        "not_required" => "Niewymagane",
+        "unpaid" => LocalizationSvc.GetString("PayUnpaid"),
+        "partial" => LocalizationSvc.GetString("PayPartial"),
+        "paid" => LocalizationSvc.GetString("PayPaid"),
+        "overpaid" => LocalizationSvc.GetString("PayOverpaid"),
+        "not_required" => LocalizationSvc.GetString("PayNotRequired"),
         _ => status
     };
 
@@ -440,7 +440,7 @@
             _enrollments = await EnrollSvc.GetAllAsync();
             _candidates = await RegSvc.GetAllAsync();
         }
-        catch { Snackbar.Add("Błąd ładowania", Severity.Error); }
+        catch { Snackbar.Add(LocalizationSvc.GetString("ErrorLoadingData"), Severity.Error); }
         finally { _loading = false; }
     }
 
@@ -458,9 +458,9 @@
         enrollment.Course = course;
 
         if (success)
-            Snackbar.Add("Dane kursu studenta zostały zapisane.", Severity.Success);
+            Snackbar.Add(LocalizationSvc.GetString("EnrollmentSaved"), Severity.Success);
         else
-            Snackbar.Add("Błąd podczas zapisywania danych.", Severity.Error);
+            Snackbar.Add(LocalizationSvc.GetString("EnrollmentSaveError"), Severity.Error);
     }
 
     // Studenci pojawiają się tu wyłącznie poprzez przypisanie kandydata do kursu
@@ -479,7 +479,7 @@
 
         var parameters = new DialogParameters { ["Model"] = model, ["IsNew"] = false };
         var dialog = await DialogSvc.ShowAsync<StudentDialog>(
-            "Edytuj dane", parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true });
+            LocalizationSvc.GetString("EditDataTitle"), parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true });
 
         var result = await dialog.Result;
         if (!result.Canceled && result.Data is Student saved)
@@ -487,25 +487,25 @@
             var success = await StudentSvc.UpdateAsync(saved);
             if (success)
             {
-                Snackbar.Add("Zapisano pomyślnie", Severity.Success);
+                Snackbar.Add(LocalizationSvc.GetString("SavedSuccessfully"), Severity.Success);
                 await LoadStudentsAsync();
             }
-            else Snackbar.Add("Błąd zapisywania", Severity.Error);
+            else Snackbar.Add(LocalizationSvc.GetString("SaveError"), Severity.Error);
         }
     }
 
     private async Task DeleteStudent(Student student)
     {
-        var confirmed = await DialogSvc.ShowMessageBox("Potwierdzenie usunięcia", $"Usunąć studenta «{student.FullName}»?", yesText: "Tak", cancelText: "Anuluj");
+        var confirmed = await DialogSvc.ShowMessageBox(LocalizationSvc.GetString("Confirmation"), $"{LocalizationSvc.GetString("DeleteStudentConfirmMessage")} «{student.FullName}»?", yesText: LocalizationSvc.GetString("Yes"), cancelText: LocalizationSvc.GetString("Cancel"));
         if (confirmed == true)
         {
             var ok = await StudentSvc.DeleteAsync(student.Id);
             if (ok)
             {
-                Snackbar.Add("Usunięto", Severity.Success);
+                Snackbar.Add(LocalizationSvc.GetString("Deleted"), Severity.Success);
                 await LoadStudentsAsync();
             }
-            else Snackbar.Add("Błąd usuwania", Severity.Error);
+            else Snackbar.Add(LocalizationSvc.GetString("DeleteError"), Severity.Error);
         }
     }
 }

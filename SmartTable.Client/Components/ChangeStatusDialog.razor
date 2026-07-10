@@ -1,20 +1,20 @@
 @using SmartTable.Client.Models
+@inject SmartTable.Client.Services.LocalizationService LocalizationSvc
 
 <MudDialog>
     <DialogContent>
         <MudText Class="mb-4">
-            Kandydat: <strong>@Model.FullName</strong><br/>
-            Akcja: <strong>@ActionName</strong>
+            @LocalizationSvc.GetString("CandidateLabel"): <strong>@Model.FullName</strong><br/>
+            @LocalizationSvc.GetString("ActionLabel"): <strong>@ActionName</strong>
         </MudText>
         
-        @* Вибір курсу для фінішу, викреслення або видалення помилки *@
         @if (TargetStatus == "finished" || TargetStatus == "dropped" || TargetStatus == "remove_course")
         {
             <MudSelect T="Guid?" @bind-Value="_selectedEnrollmentId"
-                       Label="Wybierz kurs"
+                       Label="@LocalizationSvc.GetString("SelectCourseLabel")"
                        Variant="Variant.Outlined"
                        Required="true"
-                       RequiredError="Musisz wybrać kurs"
+                       RequiredError="@LocalizationSvc.GetString("SelectCourseRequired")"
                        Class="mb-4">
                 @foreach (var enrollment in ActiveEnrollments)
                 {
@@ -27,7 +27,7 @@
             @if (!ActiveEnrollments.Any())
             {
                 <MudAlert Severity="Severity.Warning" Class="mb-4" Dense="true">
-                    Brak aktywnych kursów do wyboru.
+                    @LocalizationSvc.GetString("NoActiveCoursesWarning")
                 </MudAlert>
             }
         }
@@ -39,21 +39,21 @@
                           Variant="Variant.Outlined" 
                           Lines="3" 
                           Required="@IsReasonRequired" 
-                          RequiredError="Musisz podać powód!" 
+                          RequiredError="@LocalizationSvc.GetString("ReasonRequiredError")" 
                           Placeholder="@PlaceholderText" />
         }
         else
         {
             <MudText Typo="Typo.body2" Color="Color.Error" Class="mb-4">
-                Ta akcja trwale usunie przypisanie kandydata do wybranego kursu. Używaj tylko w przypadku pomyłki!
+                @LocalizationSvc.GetString("RemoveCourseWarning")
             </MudText>
         }
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel" Color="Color.Default">Wróć</MudButton>
+        <MudButton OnClick="Cancel" Color="Color.Default">@LocalizationSvc.GetString("GoBack")</MudButton>
         <MudButton Color="@ButtonColor" Variant="Variant.Filled" OnClick="Submit" 
                    Disabled="@(IsInvalid)">
-            Potwierdź
+            @LocalizationSvc.GetString("Confirm")
         </MudButton>
     </DialogActions>
 </MudDialog>
@@ -74,15 +74,15 @@
         ((TargetStatus == "finished" || TargetStatus == "dropped" || TargetStatus == "remove_course") && _selectedEnrollmentId is null);
 
     private string ActionName => TargetStatus switch {
-        "canceled" => "Anulowanie rejestracji",
-        "dropped" => "Skreślenie z listy studentów",
-        "finished" => "Zakończenie kursu",
-        "remove_course" => "Usunięcie przypisania (pomyłka)",
-        _ => "Zmiana statusu"
+        "canceled" => LocalizationSvc.GetString("ActionCancelling"),
+        "dropped" => LocalizationSvc.GetString("ActionDropping"),
+        "finished" => LocalizationSvc.GetString("ActionFinishing"),
+        "remove_course" => LocalizationSvc.GetString("ActionRemoving"),
+        _ => LocalizationSvc.GetString("ActionGeneric")
     };
 
-    private string NotesLabel => TargetStatus == "finished" ? "Uwagi (opcjonalnie)" : "Powód (wymagane)";
-    private string PlaceholderText => TargetStatus == "finished" ? "Np. Certyfikat wydany..." : "Podaj powód...";
+    private string NotesLabel => TargetStatus == "finished" ? LocalizationSvc.GetString("NotesOptional") : LocalizationSvc.GetString("ReasonRequiredLabel");
+    private string PlaceholderText => TargetStatus == "finished" ? LocalizationSvc.GetString("PlaceholderFinished") : LocalizationSvc.GetString("PlaceholderReason");
     private Color ButtonColor => TargetStatus == "finished" ? Color.Info : Color.Error;
 
     protected override void OnInitialized()

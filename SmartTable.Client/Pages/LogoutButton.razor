@@ -2,13 +2,14 @@
 @using SmartTable.Client.Services
 @inject AuthService AuthSvc
 @inject NavigationManager Nav
+@inject LocalizationService LocalizationSvc
 
 <AuthorizeView>
     <Authorized>
         <MudDivider Class="my-3" />
         <div class="px-4">
             <MudText Typo="Typo.caption" Color="Color.Secondary" Class="d-block mb-1">
-                Zalogowano jako: @context.User.Identity?.Name
+                @LocalizationSvc.GetString("LoggedInAs"): @context.User.Identity?.Name
             </MudText>
             <MudButton Variant="Variant.Text"
                        Color="Color.Error"
@@ -16,7 +17,7 @@
                        StartIcon="@Icons.Material.Filled.Logout"
                        FullWidth="true"
                        OnClick="Logout">
-                Wyloguj się
+                @LocalizationSvc.GetString("LogoutButtonText")
             </MudButton>
         </div>
     </Authorized>

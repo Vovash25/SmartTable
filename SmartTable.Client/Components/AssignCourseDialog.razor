@@ -1,20 +1,21 @@
 @using SmartTable.Client.Models
+@inject SmartTable.Client.Services.LocalizationService LocalizationSvc
 
 <MudDialog>
     <DialogContent>
         <MudText Class="mb-4">
-            Wybierz kursy dla kandydata: <strong>@Candidate.FullName</strong>
+            @LocalizationSvc.GetString("ChooseCoursesFor"): <strong>@Candidate.FullName</strong>
         </MudText>
         
         <MudForm @ref="_form" @bind-IsValid="_isValid">
             <MudSelect T="Guid" @bind-SelectedValues="_selectedCourseIds"
                        MultiSelection="true"
                        SelectAll="true"
-                       SelectAllText="Wybierz wszystkie"
-                       Label="Oznacz kursy (można kilka)"
+                       SelectAllText="@LocalizationSvc.GetString("SelectAllText")"
+                       Label="@LocalizationSvc.GetString("MarkCoursesLabel")"
                        Variant="Variant.Outlined"
                        Required="true"
-                       RequiredError="Musisz wybrać przynajmniej jeden kurs">
+                       RequiredError="@LocalizationSvc.GetString("RequiredCourseError")">
                 @foreach (var course in Courses)
                 {
                     <MudSelectItem T="Guid" Value="@course.Id">@($"{course.CourseType} - {course.Language}")</MudSelectItem>
@@ -23,9 +24,9 @@
         </MudForm>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel" Color="Color.Default">Anuluj</MudButton>
+        <MudButton OnClick="Cancel" Color="Color.Default">@LocalizationSvc.GetString("Cancel")</MudButton>
         <MudButton Color="Color.Success" Variant="Variant.Filled" OnClick="Submit" Disabled="!_selectedCourseIds.Any()">
-            Przypisz do kursów
+            @LocalizationSvc.GetString("AssignToCourses")
         </MudButton>
     </DialogActions>
 </MudDialog>
