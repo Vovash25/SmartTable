@@ -50,7 +50,7 @@
         @LocalizationSvc.GetString("Students")
     </MudNavLink>
     <MudNavLink Href="/candidates" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.RecentActors">
-    Kandydaci
+    @LocalizationSvc.GetString("CandidatesNav")
 </MudNavLink>
     <MudNavLink Href="/registrations" Match="NavLinkMatch.Prefix"
                 Icon="@Icons.Material.Filled.AssignmentTurnedIn">
@@ -72,7 +72,7 @@
         <MudNavLink Href="/admin/users" 
                     Icon="@Icons.Material.Filled.AdminPanelSettings" 
                     Style="color:#7C8CF8;">
-            Admini
+            @LocalizationSvc.GetString("AdminsNav")
         </MudNavLink>
     </AuthorizeView>
 

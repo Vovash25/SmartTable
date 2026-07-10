@@ -220,7 +220,7 @@ public class LocalizationService
             // ── Students page ──────────────────────────────────────
             { "StudentsPageTitle", "Студенти (Обслуговування після приїзду)" },
             { "StudentsTotalCaption", "Всього студентів" },
-            { "NewStudentsAutoNote", "нові студенти з'являються автоматично після призначення кандидата на курс на сторінці Kandydaci" },
+            { "NewStudentsAutoNote", "нові студенти з'являються автоматично після призначення кандидата на курс на сторінці Кандидати" },
             { "SearchStudents", "Пошук за іменем, прізвищем, ПКК, громадянством або курсом..." },
             { "FullNameCol", "Ім'я та прізвище" },
             { "CoursesCol", "Курси" },
@@ -344,6 +344,8 @@ public class LocalizationService
             { "RegStatusAssigned", "Призначено на курс" },
             { "RegistrationNotesLabel", "Примітки до реєстрації" },
             { "UpdateButton", "Оновити" },
+            { "CandidatesNav", "Кандидати" },
+            { "AdminsNav", "Адміни" },
         }},
         { "pl", new Dictionary<string, string> {
             { "Students", "Studenci" },
@@ -668,6 +670,8 @@ public class LocalizationService
             { "RegStatusAssigned", "Przypisano do kursu" },
             { "RegistrationNotesLabel", "Uwagi do rejestracji" },
             { "UpdateButton", "Aktualizuj" },
+            { "CandidatesNav", "Kandydaci" },
+            { "AdminsNav", "Admini" },
         }},
         { "en", new Dictionary<string, string> {
             { "Students", "Students" },
@@ -992,6 +996,8 @@ public class LocalizationService
             { "RegStatusAssigned", "Assigned to course" },
             { "RegistrationNotesLabel", "Registration notes" },
             { "UpdateButton", "Update" },
+            { "CandidatesNav", "Candidates" },
+            { "AdminsNav", "Admins" },
         }}
     };
  
