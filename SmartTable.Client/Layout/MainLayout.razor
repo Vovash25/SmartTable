@@ -82,13 +82,13 @@
         <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-1">
             @LocalizationSvc.GetString("Language"):
         </MudText>
-        <MudSelect T="string" Value="LocalizationSvc.CurrentLanguage" 
-                   ValueChanged="@(async (lang) => { LocalizationSvc.CurrentLanguage = lang; })" 
-                   Dense="true" Variant="Variant.Outlined" 
+        <MudSelect T="string" Value="LocalizationSvc.CurrentLanguage"
+                   ValueChanged="@(async (lang) => { LocalizationSvc.CurrentLanguage = lang; })"
+                   Dense="true" Variant="Variant.Outlined"
                    Style="background: #1A1D27;">
-            <MudSelectItem Value="@("uk")">🇺🇦 Українська</MudSelectItem>
-            <MudSelectItem Value="@("pl")">🇵🇱 Polski</MudSelectItem>
-            <MudSelectItem Value="@("en")">🇬🇧 English</MudSelectItem>
+            <MudSelectItem Value="@("uk")"><span class="fi fi-ua" style="margin-right:8px;"></span> Українська</MudSelectItem>
+            <MudSelectItem Value="@("pl")"><span class="fi fi-pl" style="margin-right:8px;"></span> Polski</MudSelectItem>
+            <MudSelectItem Value="@("en")"><span class="fi fi-gb" style="margin-right:8px;"></span> English</MudSelectItem>
         </MudSelect>
     </div>
 </MudNavMenu>
