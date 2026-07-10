@@ -136,7 +136,7 @@
 
     private async Task DeleteCourse(Course c)
     {
-        var confirmed = await DialogSvc.ShowMessageBox(
+        var confirmed = await DialogSvc.ShowMessageBoxAsync(
             LocalizationSvc.GetString("Confirmation"),
             $"{LocalizationSvc.GetString("DeleteCourseQuestion")} «{c.CourseType} ({c.Language})»?",
             yesText: LocalizationSvc.GetString("Yes"), cancelText: LocalizationSvc.GetString("Cancel"));

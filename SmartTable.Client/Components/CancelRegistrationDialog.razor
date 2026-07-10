@@ -24,7 +24,7 @@
 </MudDialog>
 
 @code {
-    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = null!;
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
     [Parameter] public CandidateRegistration Model { get; set; } = new();
 
     private string _cancelReason = string.Empty;

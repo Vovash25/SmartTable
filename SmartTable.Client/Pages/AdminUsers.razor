@@ -96,7 +96,7 @@
 
     private async Task DeleteUser(AdminUserDto user)
     {
-        var confirmed = await DialogSvc.ShowMessageBox(LocalizationSvc.GetString("Confirmation"),
+        var confirmed = await DialogSvc.ShowMessageBoxAsync(LocalizationSvc.GetString("Confirmation"),
             $"{LocalizationSvc.GetString("DeleteAdminConfirmMessage")} «{user.Username}»?", yesText: LocalizationSvc.GetString("Yes"), cancelText: LocalizationSvc.GetString("Cancel"));
 
         if (confirmed != true) return;

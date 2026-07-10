@@ -496,7 +496,7 @@
 
     private async Task DeleteStudent(Student student)
     {
-        var confirmed = await DialogSvc.ShowMessageBox(LocalizationSvc.GetString("Confirmation"), $"{LocalizationSvc.GetString("DeleteStudentConfirmMessage")} «{student.FullName}»?", yesText: LocalizationSvc.GetString("Yes"), cancelText: LocalizationSvc.GetString("Cancel"));
+        var confirmed = await DialogSvc.ShowMessageBoxAsync(LocalizationSvc.GetString("Confirmation"), $"{LocalizationSvc.GetString("DeleteStudentConfirmMessage")} «{student.FullName}»?", yesText: LocalizationSvc.GetString("Yes"), cancelText: LocalizationSvc.GetString("Cancel"));
         if (confirmed == true)
         {
             var ok = await StudentSvc.DeleteAsync(student.Id);

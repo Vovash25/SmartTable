@@ -365,7 +365,7 @@
 
     private async Task DeleteCandidate(CandidateRegistration reg)
     {
-        var confirmed = await DialogSvc.ShowMessageBox(LocalizationSvc.GetString("Confirmation"),
+        var confirmed = await DialogSvc.ShowMessageBoxAsync(LocalizationSvc.GetString("Confirmation"),
             $"{LocalizationSvc.GetString("DeleteCandidateConfirmMessage")} «{reg.FullName}»?",
             yesText: LocalizationSvc.GetString("YesDelete"), cancelText: LocalizationSvc.GetString("Cancel"));
         if (confirmed == true)
