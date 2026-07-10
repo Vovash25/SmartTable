@@ -54,4 +54,15 @@ builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<IRegistrationService, RegistrationService>();
 builder.Services.AddScoped<IAdminUserService, AdminUserService>();
 
-await builder.Build().RunAsync();
+var host = builder.Build();
+
+// ── "Прогрів" авторизації ПЕРЕД стартом рендера ────────────────────────────
+// Без цього перша сторінка після завантаження могла встигнути зробити
+// API-запит на мілісекунду раніше, ніж CustomAuthStateProvider встигав
+// асинхронно дістати токен з localStorage і прикріпити заголовок
+// Authorization — звідси й одноразовий "шум" 401 у консолі. Тепер токен
+// гарантовано підхоплений ще до того, як Blazor покаже хоч одну сторінку.
+var authStateProvider = host.Services.GetRequiredService<AuthenticationStateProvider>();
+await authStateProvider.GetAuthenticationStateAsync();
+
+await host.RunAsync();
