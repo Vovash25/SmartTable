@@ -1,4 +1,5 @@
 @using SmartTable.Client.Models
+@inject ICourseDateService CourseDateSvc
 @inject SmartTable.Client.Services.LocalizationService LocalizationSvc
 
 <MudDialog>
@@ -6,22 +7,55 @@
         <MudText Class="mb-4">
             @LocalizationSvc.GetString("ChooseCoursesFor"): <strong>@Candidate.FullName</strong>
         </MudText>
-        
-        <MudForm @ref="_form" @bind-IsValid="_isValid">
-            <MudSelect T="Guid" @bind-SelectedValues="_selectedCourseIds"
-                       MultiSelection="true"
-                       SelectAll="true"
-                       SelectAllText="@LocalizationSvc.GetString("SelectAllText")"
-                       Label="@LocalizationSvc.GetString("MarkCoursesLabel")"
-                       Variant="Variant.Outlined"
-                       Required="true"
-                       RequiredError="@LocalizationSvc.GetString("RequiredCourseError")">
-                @foreach (var course in Courses)
-                {
-                    <MudSelectItem T="Guid" Value="@course.Id">@($"{course.CourseType} - {course.Language}")</MudSelectItem>
-                }
-            </MudSelect>
-        </MudForm>
+
+        @if (_loadingDates)
+        {
+            <MudProgressLinear Indeterminate="true" Class="mb-4" />
+        }
+
+        <MudStack Spacing="3">
+            @foreach (var course in Courses)
+            {
+                var courseLabel = $"{course.CourseType} - {course.Language}";
+                var dates = _datesByCourse.TryGetValue(course.Id, out var list) ? list : new List<CourseDate>();
+
+                <MudPaper Elevation="0" Class="pa-3" Style="background-color: var(--mud-palette-background-grey); border-radius: 8px;">
+                    <MudCheckBox T="bool"
+                                 Value="@_selectedCourseIds.Contains(course.Id)"
+                                 ValueChanged="@((bool v) => ToggleCourse(course.Id, v))"
+                                 Label="@courseLabel"
+                                 Dense="true" />
+
+                    @if (_selectedCourseIds.Contains(course.Id))
+                    {
+                        @if (dates.Any())
+                        {
+                            <MudSelect T="Guid?"
+                                       Value="_selectedDateByCourse.GetValueOrDefault(course.Id)"
+                                       ValueChanged="@((Guid? v) => _selectedDateByCourse[course.Id] = v)"
+                                       Label="@LocalizationSvc.GetString("SelectDateForCourse")"
+                                       Variant="Variant.Outlined"
+                                       Dense="true"
+                                       Class="mt-2">
+                                <MudSelectItem T="Guid?" Value="null">@LocalizationSvc.GetString("NoDateSelected")</MudSelectItem>
+                                @foreach (var d in dates)
+                                {
+                                    <MudSelectItem T="Guid?" Value="@d.Id">
+                                        @(d.EndDate.HasValue ? $"{d.StartDate:dd.MM.yyyy} – {d.EndDate:dd.MM.yyyy}" : $"{d.StartDate:dd.MM.yyyy}")
+                                    </MudSelectItem>
+                                }
+                            </MudSelect>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2 d-block">
+                                @LocalizationSvc.GetString("NoDatesYet")
+                            </MudText>
+                        }
+                    }
+                </MudPaper>
+            }
+        </MudStack>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel" Color="Color.Default">@LocalizationSvc.GetString("Cancel")</MudButton>
@@ -36,17 +70,54 @@
     [Parameter] public CandidateRegistration Candidate { get; set; } = new();
     [Parameter] public List<Course> Courses { get; set; } = new();
 
-    private MudForm _form = null!;
-    private bool _isValid;
-    private IReadOnlyCollection<Guid> _selectedCourseIds = new HashSet<Guid>();
+    private readonly HashSet<Guid> _selectedCourseIds = new();
+    private readonly Dictionary<Guid, Guid?> _selectedDateByCourse = new();
+    private Dictionary<Guid, List<CourseDate>> _datesByCourse = new();
+    private bool _loadingDates = true;
 
-    private async Task Submit()
+    protected override async Task OnInitializedAsync()
     {
-        await _form.ValidateAsync();
-        if (_isValid && _selectedCourseIds.Any())
+        try
         {
-            MudDialog.Close(DialogResult.Ok(_selectedCourseIds));
+            var allDates = await CourseDateSvc.GetAllAsync();
+            _datesByCourse = allDates
+                .GroupBy(d => d.CourseId)
+                .ToDictionary(g => g.Key, g => g.OrderBy(d => d.StartDate).ToList());
         }
+        catch
+        {
+            _datesByCourse = new();
+        }
+        finally
+        {
+            _loadingDates = false;
+        }
+    }
+
+    private void ToggleCourse(Guid courseId, bool selected)
+    {
+        if (selected)
+        {
+            _selectedCourseIds.Add(courseId);
+            if (!_selectedDateByCourse.ContainsKey(courseId))
+                _selectedDateByCourse[courseId] = null;
+        }
+        else
+        {
+            _selectedCourseIds.Remove(courseId);
+            _selectedDateByCourse.Remove(courseId);
+        }
+    }
+
+    private void Submit()
+    {
+        if (!_selectedCourseIds.Any()) return;
+
+        var result = _selectedCourseIds
+            .Select(courseId => new CourseAssignmentItem(courseId, _selectedDateByCourse.GetValueOrDefault(courseId)))
+            .ToList();
+
+        MudDialog.Close(DialogResult.Ok(result));
     }
 
     private void Cancel() => MudDialog.Cancel();

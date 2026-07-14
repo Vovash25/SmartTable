@@ -1,54 +1,381 @@
-using System.Net.Http.Json;
-using SmartTable.Client.Models;
+@page "/candidates"
+@using SmartTable.Client.Models
+@inject IRegistrationService RegSvc
+@inject ICourseService CourseSvc
+@inject IEnrollmentService EnrollSvc
+@inject IDialogService DialogSvc
+@inject ISnackbar Snackbar
+@inject SmartTable.Client.Services.LocalizationService LocalizationSvc
+@implements IDisposable
 
-namespace SmartTable.Client.Services
-{
-    public class RegistrationService : IRegistrationService
+<PageTitle>@LocalizationSvc.GetString("CandidatesPageTitle") — SmartTable</PageTitle>
+
+<div class="d-flex align-center justify-space-between mb-4">
+    <div>
+        <MudText Typo="Typo.h5" Style="font-weight:700;">@LocalizationSvc.GetString("CandidatesPageTitle")</MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary">
+            @LocalizationSvc.GetString("CandidatesTotalInQueue"): @_candidates.Count
+        </MudText>
+    </div>
+</div>
+
+<MudTextField @bind-Value="_searchTerm"
+              Placeholder="@LocalizationSvc.GetString("SearchByNameOrPhone")"
+              Adornment="Adornment.Start"
+              AdornmentIcon="@Icons.Material.Filled.Search"
+              Variant="Variant.Outlined"
+              Immediate="true"
+              DebounceInterval="250"
+              Class="mb-4"
+              Style="max-width:400px;" />
+
+<MudDataGrid T="CandidateRegistration"
+             Items="FilteredCandidates"
+             SortMode="SortMode.Multiple"
+             Hover="true"
+             Striped="true"
+             Dense="true"
+             Loading="_loading">
+    <Columns>
+        <HierarchyColumn T="CandidateRegistration" />
+        
+        <PropertyColumn Property="x => x.FullName" Title="@LocalizationSvc.GetString("CandidateCol")" />
+        <PropertyColumn Property="x => x.PhoneE164" Title="@LocalizationSvc.GetString("PhoneCol")" />
+        
+        <TemplateColumn Title="@LocalizationSvc.GetString("Course")">
+            <CellTemplate>
+                @{
+                    var enrollments = GetEnrollmentsFor(context.Item);
+                }
+                @if (enrollments.Any())
+                {
+                    <MudStack Spacing="1">
+                        @foreach (var e in enrollments)
+                        {
+                            <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                                <MudText Typo="Typo.body2">@($"{e.Course?.CourseType} {e.Course?.Language}".Trim())</MudText>
+                                <MudChip T="string" Size="Size.Small" Color="@EnrollmentStatusColor(e.Status)">@EnrollmentStatusLabel(e.Status)</MudChip>
+                            </MudStack>
+                        }
+                    </MudStack>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">-</MudText>
+                }
+            </CellTemplate>
+        </TemplateColumn>
+        
+        @* ДИНАМІЧНИЙ ЗАГАЛЬНИЙ СТАТУС *@
+        <TemplateColumn Title="@LocalizationSvc.GetString("Status")">
+            <CellTemplate>
+                @{
+                    var enrolls = GetEnrollmentsFor(context.Item);
+                    var hasActive = enrolls.Any(e => e.Status == "Active");
+                    var hasFinished = enrolls.Any(e => e.Status == "Finished");
+                    var hasDropped = enrolls.Any(e => e.Status == "Dropped");
+                }
+
+                @if (context.Item.Status == "canceled")
+                {
+                    <MudChip T="string" Color="Color.Error" Size="Size.Small">@LocalizationSvc.GetString("StatusCancelled")</MudChip>
+                }
+                else if (context.Item.Status == "assigned_to_course")
+                {
+                    @if (hasActive || !enrolls.Any())
+                    {
+                        <MudChip T="string" Color="Color.Success" Size="Size.Small">@LocalizationSvc.GetString("StatusRegistered")</MudChip>
+                    }
+                    else if (!hasActive && hasFinished) 
+                    {
+                        <MudChip T="string" Color="Color.Info" Size="Size.Small">@LocalizationSvc.GetString("StatusFinished")</MudChip>
+                    }
+                    else if (!hasActive && hasDropped && !hasFinished) 
+                    {
+                        <MudChip T="string" Color="Color.Dark" Size="Size.Small">@LocalizationSvc.GetString("StatusDropped")</MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Color="Color.Success" Size="Size.Small">@LocalizationSvc.GetString("StatusRegistered")</MudChip>
+                    }
+                }
+                else
+                {
+                    <MudChip T="string" Color="Color.Warning" Size="Size.Small">@LocalizationSvc.GetString("StatusWaiting")</MudChip>
+                }
+            </CellTemplate>
+        </TemplateColumn>
+        
+        <TemplateColumn Title="@LocalizationSvc.GetString("ActionCol")" CellStyle="width:200px;">
+            <CellTemplate>
+                @{
+                    var enrollments = GetEnrollmentsFor(context.Item);
+                    var hasActiveEnrollment = enrollments.Any(e => e.Status == "Active");
+                }
+                <MudStack Row="true" Spacing="1">
+                    <MudTooltip Text="@(enrollments.Any() ? LocalizationSvc.GetString("TooltipAddCourse") : LocalizationSvc.GetString("TooltipRegister"))">
+                        <MudIconButton Icon="@(enrollments.Any() ? Icons.Material.Filled.Add : Icons.Material.Filled.CheckCircle)"
+                                       Size="Size.Small" Color="Color.Success"
+                                       OnClick="@(() => OpenAssignDialog(context.Item))" />
+                    </MudTooltip>
+
+                    @if (hasActiveEnrollment)
+                    {
+                        <MudTooltip Text="@LocalizationSvc.GetString("TooltipFinishCourse")">
+                            <MudIconButton Icon="@Icons.Material.Filled.DoneAll" Color="Color.Info" Size="Size.Small" OnClick="@(() => OpenStatusDialog(context.Item, "finished"))" />
+                        </MudTooltip>
+                        <MudTooltip Text="@LocalizationSvc.GetString("TooltipDropStudent")">
+                            <MudIconButton Icon="@Icons.Material.Filled.PersonRemove" Color="Color.Warning" Size="Size.Small" OnClick="@(() => OpenStatusDialog(context.Item, "dropped"))" />
+                        </MudTooltip>
+                        <MudTooltip Text="@LocalizationSvc.GetString("TooltipRemoveCourse")">
+                            <MudIconButton Icon="@Icons.Material.Filled.LinkOff" Color="Color.Default" Size="Size.Small" OnClick="@(() => OpenStatusDialog(context.Item, "remove_course"))" />
+                        </MudTooltip>
+                    }
+
+                    @if (!hasActiveEnrollment && context.Item.Status != "canceled")
+                    {
+                        <MudTooltip Text="@LocalizationSvc.GetString("TooltipCancelRegistration")">
+                            <MudIconButton Icon="@Icons.Material.Filled.Cancel" Color="Color.Error" Size="Size.Small" OnClick="@(() => OpenStatusDialog(context.Item, "canceled"))" />
+                        </MudTooltip>
+                    }
+
+                    <MudTooltip Text="@LocalizationSvc.GetString("TooltipDeletePermanently")">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => DeleteCandidate(context.Item))" />
+                    </MudTooltip>
+                </MudStack>
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+    
+    <ChildRowContent>
+        <MudCard Elevation="0" Class="pa-4 my-2" Style="background-color: var(--mud-palette-background-grey); border-radius: 8px;">
+            <MudText Typo="Typo.subtitle1" Color="Color.Primary" Class="mb-3">
+                <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="mr-1 mb-1"/>
+                @LocalizationSvc.GetString("CandidateDetails")
+            </MudText>
+            <MudGrid>
+                <MudItem xs="12" sm="4">
+                    <MudText Typo="Typo.body2"><b>@LocalizationSvc.GetString("FullNameLabel"):</b> @context.Item.FullName</MudText>
+                    <MudText Typo="Typo.body2"><b>@LocalizationSvc.GetString("PhoneNumberLabel"):</b> @context.Item.PhoneE164</MudText>
+                    <MudText Typo="Typo.body2"><b>@LocalizationSvc.GetString("ContactMethodLabel"):</b> @context.Item.PrimaryContactMethod</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudText Typo="Typo.body2" Class="mb-1">
+                        <b>@LocalizationSvc.GetString("PreferredCourseLabel"):</b> @(string.IsNullOrWhiteSpace(context.Item.CourseType) ? "-" : $"{context.Item.CourseType} {context.Item.CourseLanguage}".Trim())
+                    </MudText>
+                    <MudText Typo="Typo.body2" Class="mb-3">
+                        <b>@LocalizationSvc.GetString("PreferredDateLabel"):</b>
+                        @(context.Item.PlannedArrivalDate?.ToString("dd.MM.yyyy") ?? context.Item.PreferredCourseDate?.ToString("dd.MM.yyyy") ?? "-")
+                    </MudText>
+
+                    @foreach (var e in GetEnrollmentsFor(context.Item))
+                    {
+                        <MudText Typo="Typo.body2">
+                            <b>@($"{e.Course?.CourseType} {e.Course?.Language}".Trim()):</b> @EnrollmentStatusLabel(e.Status)
+                            @if (!string.IsNullOrWhiteSpace(e.Notes)) { <span> — @e.Notes</span> }
+                        </MudText>
+                    }
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudText Typo="Typo.body2"><b>@LocalizationSvc.GetString("CompanyCol"):</b> @(context.Item.PayerType == "company" ? context.Item.CompanyName : LocalizationSvc.GetString("PrivatelyText"))</MudText>
+                    <MudText Typo="Typo.body2">
+                        <b>@LocalizationSvc.GetString("HotelCol"):</b>
+                        @(context.Item.NeedsHotel == "yes" ? $"{LocalizationSvc.GetString("HotelYes")} ({context.Item.HotelFrom?.ToString("dd.MM")} - {context.Item.HotelTo?.ToString("dd.MM")})" : context.Item.NeedsHotel == "no" ? LocalizationSvc.GetString("HotelNo") : LocalizationSvc.GetString("HotelUnknown"))
+                    </MudText>
+                    <MudText Typo="Typo.body2"><b>@LocalizationSvc.GetString("Notes"):</b> @context.Item.RegistrationNotes @context.Item.ContactNotes</MudText>
+                </MudItem>
+            </MudGrid>
+        </MudCard>
+    </ChildRowContent>
+    <NoRecordsContent><MudText Color="Color.Secondary">@LocalizationSvc.GetString("NoRegistrationsFound")</MudText></NoRecordsContent>
+</MudDataGrid>
+
+@code {
+    private List<CandidateRegistration> _candidates = new();
+    private List<Course> _courses = new();
+    private List<Enrollment> _enrollments = new();
+    private string _searchTerm = string.Empty;
+    private bool _loading = true;
+
+    private IEnumerable<CandidateRegistration> FilteredCandidates => _candidates
+        .Where(r => string.IsNullOrWhiteSpace(_searchTerm) ||
+                    (r.FullName != null && r.FullName.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase)) ||
+                    (r.PhoneE164 != null && r.PhoneE164.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase)));
+
+    private List<Enrollment> GetEnrollmentsFor(CandidateRegistration reg) =>
+        _enrollments.Where(e => e.Student != null &&
+                                 string.Equals(e.Student.FullName, reg.FullName, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+
+    private static string EnrollmentStatusLabel(string status) => status switch
     {
-        private readonly HttpClient _http;
+        "Active" => "W trakcie",
+        "Finished" => "Skończone",
+        "Dropped" => "Skreślony",
+        _ => status
+    };
 
-        public RegistrationService(HttpClient http)
+    private static Color EnrollmentStatusColor(string status) => status switch
+    {
+        "Active" => Color.Warning,
+        "Finished" => Color.Info,
+        "Dropped" => Color.Dark,
+        _ => Color.Default
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        LocalizationSvc.OnLanguageChanged += StateHasChanged;
+        await LoadDataAsync();
+    }
+
+    public void Dispose() => LocalizationSvc.OnLanguageChanged -= StateHasChanged;
+
+    private async Task LoadDataAsync()
+    {
+        _loading = true;
+        try
         {
-            _http = http;
+            _candidates = await RegSvc.GetAllAsync();
+            _enrollments = await EnrollSvc.GetAllAsync();
+        }
+        catch { Snackbar.Add(LocalizationSvc.GetString("ErrorLoadingData"), Severity.Error); }
+        finally { _loading = false; }
+    }
+
+    private async Task OpenAssignDialog(CandidateRegistration reg)
+    {
+        if (!_courses.Any())
+        {
+            try { _courses = await CourseSvc.GetAllAsync(); }
+            catch { Snackbar.Add(LocalizationSvc.GetString("ErrorLoadingCourses"), Severity.Error); return; }
         }
 
-        public async Task<List<CandidateRegistration>> GetAllAsync()
-        {
-            return await _http.GetFromJsonAsync<List<CandidateRegistration>>("api/candidateregistrations") ?? new();
-        }
+        var parameters = new DialogParameters { ["Candidate"] = reg, ["Courses"] = _courses };
+        var dialog = await DialogSvc.ShowAsync<AssignCourseDialog>(LocalizationSvc.GetString("AssignToCoursesTitle"), parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true });
+        var result = await dialog.Result;
 
-        public async Task<CandidateRegistration?> CreateAsync(CandidateRegistration model)
+        if (!result.Canceled && result.Data is List<CourseAssignmentItem> assignments)
         {
-            var response = await _http.PostAsJsonAsync("api/candidateregistrations", model);
-            
-            if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
+            try
             {
-                return null; 
+                var success = await RegSvc.AssignToCourseAsync(reg.Id, assignments);
+                if (success)
+                {
+                    reg.Status = "assigned_to_course";
+                    await RegSvc.UpdateAsync(reg);
+
+                    Snackbar.Add(LocalizationSvc.GetString("CandidateAssignedSuccess"), Severity.Success);
+                    await LoadDataAsync(); 
+                }
+                else 
+                {
+                    Snackbar.Add(LocalizationSvc.GetString("AssignError"), Severity.Error);
+                }
             }
-            
-            if (response.IsSuccessStatusCode)
+            catch (Exception ex)
             {
-                return await response.Content.ReadFromJsonAsync<CandidateRegistration>();
+                Console.WriteLine($"Error assigning to course: {ex.Message}");
+                Snackbar.Add(LocalizationSvc.GetString("SystemError"), Severity.Error);
             }
-            return null;
+        }
+    }
+
+    private async Task OpenStatusDialog(CandidateRegistration reg, string newStatus)
+    {
+        var activeEnrollments = GetEnrollmentsFor(reg).Where(e => e.Status == "Active").ToList();
+
+        var parameters = new DialogParameters
+        {
+            ["Model"] = reg,
+            ["TargetStatus"] = newStatus,
+            ["ActiveEnrollments"] = activeEnrollments
+        };
+        var title = newStatus == "finished" ? LocalizationSvc.GetString("FinishCourseTitle")
+            : (newStatus == "dropped" ? LocalizationSvc.GetString("DropFromListTitle")
+            : (newStatus == "remove_course" ? LocalizationSvc.GetString("RemoveCourseTitle")
+            : LocalizationSvc.GetString("CancelRegistrationTitle")));
+
+        var dialog = await DialogSvc.ShowAsync<ChangeStatusDialog>(title, parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+
+        if (result.Canceled || result.Data is not ChangeStatusDialog.StatusChangeResult statusResult)
+            return;
+
+        if (newStatus == "canceled")
+        {
+            reg.Status = "canceled";
+            if (!string.IsNullOrWhiteSpace(statusResult.Notes))
+            {
+                reg.RegistrationNotes = string.IsNullOrWhiteSpace(reg.RegistrationNotes)
+                    ? $"Powód anulowania: {statusResult.Notes}"
+                    : $"{reg.RegistrationNotes} | Powód anulowania: {statusResult.Notes}";
+            }
+
+            var regSuccess = await RegSvc.UpdateAsync(reg);
+            if (regSuccess)
+            {
+                Snackbar.Add(LocalizationSvc.GetString("StatusUpdated"), Severity.Success);
+                await LoadDataAsync();
+            }
+            else Snackbar.Add(LocalizationSvc.GetString("UpdateError"), Severity.Error);
+            return;
         }
 
-        public async Task<bool> UpdateAsync(CandidateRegistration model)
+        if (statusResult.EnrollmentId is null) return;
+        var enrollment = _enrollments.FirstOrDefault(e => e.Id == statusResult.EnrollmentId);
+        if (enrollment is null) return;
+
+        if (newStatus == "remove_course")
         {
-            var response = await _http.PutAsJsonAsync($"api/candidateregistrations/{model.Id}", model);
-            return response.IsSuccessStatusCode;
+            var successDelete = await EnrollSvc.DeleteAsync(enrollment.Id);
+            if (successDelete)
+            {
+                if (GetEnrollmentsFor(reg).Count == 1)
+                {
+                    reg.Status = "new";
+                    await RegSvc.UpdateAsync(reg);
+                }
+                Snackbar.Add(LocalizationSvc.GetString("EnrollmentRemoved"), Severity.Success);
+                await LoadDataAsync();
+            }
+            else Snackbar.Add(LocalizationSvc.GetString("RemoveFromCourseError"), Severity.Error);
+            return;
         }
 
-        public async Task<bool> DeleteAsync(Guid id)
+        enrollment.Status = newStatus == "finished" ? "Finished" : "Dropped";
+        if (!string.IsNullOrWhiteSpace(statusResult.Notes))
         {
-            var response = await _http.DeleteAsync($"api/candidateregistrations/{id}");
-            return response.IsSuccessStatusCode;
+            string prefix = newStatus == "finished" ? "Uwagi końcowe:" : "Powód skreślenia:";
+            enrollment.Notes = string.IsNullOrWhiteSpace(enrollment.Notes) ? $"{prefix} {statusResult.Notes}" : $"{enrollment.Notes} | {prefix} {statusResult.Notes}";
         }
 
-        public async Task<bool> AssignToCourseAsync(Guid registrationId, IEnumerable<Guid> courseIds)
+        enrollment.Student = null;
+        enrollment.Course = null;
+
+        var success = await EnrollSvc.UpdateAsync(enrollment);
+        if (success)
         {
-            var response = await _http.PostAsJsonAsync($"api/candidateregistrations/{registrationId}/assign", courseIds);
-            return response.IsSuccessStatusCode;
+            Snackbar.Add(LocalizationSvc.GetString("CourseStatusUpdated"), Severity.Success);
+            await LoadDataAsync();
+        }
+        else Snackbar.Add(LocalizationSvc.GetString("UpdateError"), Severity.Error);
+    }
+
+    private async Task DeleteCandidate(CandidateRegistration reg)
+    {
+        var confirmed = await DialogSvc.ShowMessageBoxAsync(LocalizationSvc.GetString("Confirmation"),
+            $"{LocalizationSvc.GetString("DeleteCandidateConfirmMessage")} «{reg.FullName}»?",
+            yesText: LocalizationSvc.GetString("YesDelete"), cancelText: LocalizationSvc.GetString("Cancel"));
+        if (confirmed == true)
+        {
+            var success = await RegSvc.DeleteAsync(reg.Id);
+            if (success)
+            {
+                Snackbar.Add(LocalizationSvc.GetString("CandidateDeleted"), Severity.Success);
+                await LoadDataAsync();
+            }
+            else Snackbar.Add(LocalizationSvc.GetString("DeleteErrorGeneric"), Severity.Error);
         }
     }
 }

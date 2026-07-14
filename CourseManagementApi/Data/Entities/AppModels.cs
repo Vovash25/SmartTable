@@ -108,14 +108,40 @@ namespace CourseManagementApi.Data.Entities
         public string Language { get; set; } = string.Empty;
 
         public ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
+
+        // Конкретні заплановані дати проведення цього курсу (ADR/PL, KWP/UA і т.д.)
+        public ICollection<CourseDate> CourseDates { get; set; } = new List<CourseDate>();
+    }
+
+    // --- 4b. ДАТИ ПРОВЕДЕННЯ КУРСУ ---
+    // Один Course (тип+мова) може мати кілька запланованих термінів проведення.
+    // Кандидата при призначенні на курс прикріплюють до конкретного CourseDate,
+    // а не просто до Course — так усі, хто записаний на один і той самий термін,
+    // групуються разом.
+    [Table("course_dates")]
+    public class CourseDate
+    {
+        [Key]
+        [Column("id")]
+        public Guid Id { get; set; } = Guid.NewGuid();
+
+        [Column("course_id")]
+        public Guid CourseId { get; set; }
+        public Course? Course { get; set; }
+
+        [Column("start_date")]
+        public DateTime StartDate { get; set; }
+
+        [Column("end_date")]
+        public DateTime? EndDate { get; set; }
+
+        [Column("created_at")]
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        public ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
     }
 
     // --- 5. РЕЄСТРАЦІЇ (Enrollments) ---
-    // УВАГА: раніше цей клас не мав жодного [Column] атрибута, через що EF Core
-    // генерував SQL із "сирими" PascalCase назвами (e."StudentId", e."Id" тощо),
-    // а фізичні колонки в Postgres — snake_case (student_id, id...). Звідси помилки
-    // "column e.StudentId does not exist". Додано явні [Table]/[Column] за тим самим
-    // шаблоном, що вже використовується в Student/Course/CandidateRegistration.
     [Table("enrollments")]
     public class Enrollment
     {
@@ -130,6 +156,12 @@ namespace CourseManagementApi.Data.Entities
         [Column("course_id")]
         public Guid CourseId { get; set; }
         public Course? Course { get; set; }
+
+        // Необов'язково (nullable) — щоб старі записи, створені до появи CourseDate,
+        // лишались валідними без міграції даних.
+        [Column("course_date_id")]
+        public Guid? CourseDateId { get; set; }
+        public CourseDate? CourseDate { get; set; }
 
         [Column("arrival_date")]
         public DateTime? ArrivalDate { get; set; }
@@ -168,12 +200,11 @@ namespace CourseManagementApi.Data.Entities
         public string? HotelStayRange { get; set; }
 
         [Column("status")]
-        public string Status { get; set; } = "Active"; // Status końcowy
+        public string Status { get; set; } = "Active";
 
         [Column("notes")]
-        public string? Notes { get; set; } // Uwagi biura
+        public string? Notes { get; set; }
 
-        // === POLA KARTY OBSŁUGI (Etap 3) ===
         [Column("attendance_status")]
         public string AttendanceStatus { get; set; } = "waiting_arrival";
 
@@ -325,5 +356,33 @@ namespace CourseManagementApi.Data.Entities
 
         [Column("updated_by")]
         public Guid? UpdatedBy { get; set; }
+    }
+
+    // --- 7. КОРИСТУВАЧІ (Admin/SuperAdmin) ---
+    [Table("app_users")]
+    public class AppUser
+    {
+        [Key]
+        [Column("id")]
+        public Guid Id { get; set; } = Guid.NewGuid();
+
+        [Required]
+        [Column("username")]
+        public string Username { get; set; } = string.Empty;
+
+        [Required]
+        [Column("password_hash")]
+        public string PasswordHash { get; set; } = string.Empty;
+
+        [Required]
+        [Column("password_salt")]
+        public string PasswordSalt { get; set; } = string.Empty;
+
+        [Required]
+        [Column("role")]
+        public string Role { get; set; } = "Admin";
+
+        [Column("created_at")]
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }

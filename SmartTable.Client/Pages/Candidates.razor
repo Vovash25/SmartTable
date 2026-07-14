@@ -255,12 +255,11 @@
         var dialog = await DialogSvc.ShowAsync<AssignCourseDialog>(LocalizationSvc.GetString("AssignToCoursesTitle"), parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true });
         var result = await dialog.Result;
 
-        if (!result.Canceled && result.Data is IEnumerable<Guid> courseIds)
+        if (!result.Canceled && result.Data is List<CourseAssignmentItem> assignments)
         {
             try
             {
-                var safeCourseIdsList = courseIds.ToList(); 
-                var success = await RegSvc.AssignToCourseAsync(reg.Id, safeCourseIdsList);
+                var success = await RegSvc.AssignToCourseAsync(reg.Id, assignments);
                 if (success)
                 {
                     reg.Status = "assigned_to_course";
