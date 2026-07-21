@@ -4,22 +4,38 @@
     <DialogContent>
         <MudForm @ref="_form" @bind-IsValid="_isValid">
             <MudGrid Spacing="3">
-                
+
                 <MudItem xs="12">
-                    <MudTextField @bind-Value="Model.CourseType"
-                                  Label="@LocalizationSvc.GetString("CourseType")"
-                                  Variant="Variant.Outlined"
-                                  Required="true"
-                                  RequiredError="@LocalizationSvc.GetString("RequiredField")" />
+                    <MudSelect T="string" @bind-Value="Model.CourseType"
+                               Label="@LocalizationSvc.GetString("CourseType")"
+                               Variant="Variant.Outlined"
+                               Required="true"
+                               RequiredError="@LocalizationSvc.GetString("RequiredField")">
+                        <MudSelectItem Value="@("ADR")">ADR</MudSelectItem>
+                        <MudSelectItem Value="@("KWP")">KWP</MudSelectItem>
+                        <MudSelectItem Value="@("SO")">SO</MudSelectItem>
+                    </MudSelect>
                 </MudItem>
 
                 <MudItem xs="12">
-                    <MudTextField @bind-Value="Model.Language"
-                                  Label="@LocalizationSvc.GetString("Language_col")"
-                                  Variant="Variant.Outlined"
-                                  Required="true"
-                                  RequiredError="@LocalizationSvc.GetString("RequiredField")" />
+                    <MudSelect T="string" @bind-Value="Model.Language"
+                               Label="@LocalizationSvc.GetString("Language_col")"
+                               Variant="Variant.Outlined"
+                               Required="true"
+                               RequiredError="@LocalizationSvc.GetString("RequiredField")">
+                        <MudSelectItem Value="@("RUS")">RUS</MudSelectItem>
+                        <MudSelectItem Value="@("ENG")">ENG</MudSelectItem>
+                    </MudSelect>
                 </MudItem>
+
+                @if (!string.IsNullOrWhiteSpace(Model.CourseType) && !string.IsNullOrWhiteSpace(Model.Language))
+                {
+                    <MudItem xs="12">
+                        <MudAlert Severity="Severity.Info" Dense="true">
+                            @LocalizationSvc.GetString("CourseVariantPreview"): <strong>@Model.CourseType @Model.Language</strong>
+                        </MudAlert>
+                    </MudItem>
+                }
 
             </MudGrid>
         </MudForm>
@@ -39,7 +55,7 @@
 
 @code {
     [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
-    
+
     [Parameter] public Course Model { get; set; } = new();
     [Parameter] public bool IsNew { get; set; }
 

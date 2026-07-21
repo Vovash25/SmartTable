@@ -43,16 +43,33 @@ namespace CourseManagementApi.Controllers
             return CreatedAtAction(nameof(GetRegistrations), new { id = registration.Id }, registration);
         }
 
+        // Кожен запис — це конкретний CourseTerm (термін курсу).
+        // Обов'язковий, оскільки призначення тепер відбувається ЛИШЕ через вибір
+        // одного з уже створених термінів — ручного вводу дати більше немає.
+        public record CourseAssignmentItem(Guid CourseTermId);
+
         [HttpPost("{id}/assign")]
-        public async Task<IActionResult> AssignToCourse(Guid id, [FromBody] List<Guid> courseIds)
+        public async Task<IActionResult> AssignToCourse(Guid id, [FromBody] List<CourseAssignmentItem> assignments)
         {
             var candidate = await _context.CandidateRegistrations.FindAsync(id);
             if (candidate == null) return NotFound("Кандидата не знайдено.");
 
-            if (courseIds == null || !courseIds.Any()) return BadRequest("Не обрано жодного курсу.");
+            if (assignments == null || !assignments.Any()) return BadRequest("Не обрано жодного терміну курсу.");
 
-            var courses = await _context.Courses.Where(c => courseIds.Contains(c.Id)).ToListAsync();
-            if (!courses.Any()) return BadRequest("Організовані курси не знайдено.");
+            var termIds = assignments.Select(a => a.CourseTermId).ToList();
+            var terms = await _context.CourseTerms.Include(t => t.Course)
+                .Where(t => termIds.Contains(t.Id))
+                .ToListAsync();
+
+            if (!terms.Any()) return BadRequest("Обрані терміни курсів не знайдено.");
+
+            // Заборонено призначати на скасований чи завершений термін.
+            var blocked = terms.Where(t => t.Status is "cancelled" or "finished").ToList();
+            if (blocked.Any())
+            {
+                var names = string.Join(", ", blocked.Select(t => $"{t.Course?.CourseType} {t.Course?.Language} ({t.StartDate:dd.MM.yyyy})"));
+                return BadRequest($"Не можна призначити на скасований/завершений термін: {names}");
+            }
 
             var student = await _context.Students.FirstOrDefaultAsync(s => s.FullName == candidate.FullName);
             if (student == null)
@@ -61,17 +78,17 @@ namespace CourseManagementApi.Controllers
                 {
                     Id = Guid.NewGuid(),
                     FullName = candidate.FullName,
-                    Citizenship = "", 
-                    DateOfBirth = DateTime.UtcNow, 
+                    Citizenship = "",
+                    DateOfBirth = DateTime.UtcNow,
                     CreatedAt = DateTime.UtcNow
                 };
                 _context.Students.Add(student);
             }
 
-            foreach (var course in courses)
+            foreach (var term in terms)
             {
                 var existingEnrollment = await _context.Enrollments
-                    .FirstOrDefaultAsync(e => e.StudentId == student.Id && e.CourseId == course.Id);
+                    .FirstOrDefaultAsync(e => e.StudentId == student.Id && e.CourseId == term.CourseId);
 
                 if (existingEnrollment == null)
                 {
@@ -79,12 +96,14 @@ namespace CourseManagementApi.Controllers
                     {
                         Id = Guid.NewGuid(),
                         StudentId = student.Id,
-                        CourseId = course.Id,
-                        ArrivalDate = candidate.PlannedArrivalDate ?? candidate.PreferredCourseDate ?? DateTime.UtcNow,
+                        CourseId = term.CourseId,
+                        CourseTermId = term.Id,
+                        ArrivalDate = term.StartDate,
+                        CoursePrice = term.DefaultPrice ?? 0,
                         CompanyName = candidate.PayerType == "company" ? candidate.CompanyName : null,
                         NeedsHotel = candidate.NeedsHotel == "yes",
-                        HotelStayRange = (candidate.HotelFrom.HasValue && candidate.HotelTo.HasValue) 
-                                            ? $"{candidate.HotelFrom:dd.MM} - {candidate.HotelTo:dd.MM}" 
+                        HotelStayRange = (candidate.HotelFrom.HasValue && candidate.HotelTo.HasValue)
+                                            ? $"{candidate.HotelFrom:dd.MM} - {candidate.HotelTo:dd.MM}"
                                             : null,
                         HasInvoice = candidate.PayerType == "company",
                         Notes = $"Przeniesiono z rejestracji. {candidate.RegistrationNotes} {candidate.HotelNotes}",
@@ -98,7 +117,7 @@ namespace CourseManagementApi.Controllers
             candidate.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
-            await _audit.LogAsync("CandidateRegistration", candidate.Id, $"Przypisano kandydata '{candidate.FullName}' do {courses.Count} kurs(ów)");
+            await _audit.LogAsync("CandidateRegistration", candidate.Id, $"Przypisano kandydata '{candidate.FullName}' do {terms.Count} termin(ów)");
 
             return Ok(new { StudentId = student.Id });
         }

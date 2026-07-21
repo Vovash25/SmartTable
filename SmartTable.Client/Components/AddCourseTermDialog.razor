@@ -1,0 +1,92 @@
+@using SmartTable.Client.Models
+@inject SmartTable.Client.Services.LocalizationService LocalizationSvc
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_isValid">
+            <MudStack Spacing="3">
+                <MudDatePicker @bind-Date="_startDate"
+                               Label="@LocalizationSvc.GetString("StartDateLabel")"
+                               Variant="Variant.Outlined"
+                               DateFormat="dd.MM.yyyy"
+                               Required="true"
+                               RequiredError="@LocalizationSvc.GetString("RequiredField")" />
+
+                <MudDatePicker @bind-Date="_endDate"
+                               Label="@LocalizationSvc.GetString("EndDateLabelShort")"
+                               Variant="Variant.Outlined"
+                               DateFormat="dd.MM.yyyy"
+                               Required="true"
+                               RequiredError="@LocalizationSvc.GetString("RequiredField")" />
+
+                <MudNumericField T="decimal?" @bind-Value="Model.DefaultPrice"
+                                 Label="@LocalizationSvc.GetString("DefaultPriceLabel")"
+                                 Variant="Variant.Outlined"
+                                 Format="0.##"
+                                 Adornment="Adornment.End" AdornmentText="zł" />
+
+                <MudNumericField T="int?" @bind-Value="Model.SeatLimit"
+                                 Label="@LocalizationSvc.GetString("SeatLimitLabel")"
+                                 Variant="Variant.Outlined" />
+
+                <MudTextField T="string" @bind-Value="Model.Trainer"
+                              Label="@LocalizationSvc.GetString("TrainerLabel")"
+                              Variant="Variant.Outlined" />
+
+                <MudSelect T="string" @bind-Value="Model.Status"
+                           Label="@LocalizationSvc.GetString("TermStatusLabel")"
+                           Variant="Variant.Outlined">
+                    <MudSelectItem Value="@("planned")">@LocalizationSvc.GetString("TermStatusPlanned")</MudSelectItem>
+                    <MudSelectItem Value="@("active")">@LocalizationSvc.GetString("TermStatusActive")</MudSelectItem>
+                    <MudSelectItem Value="@("finished")">@LocalizationSvc.GetString("TermStatusFinished")</MudSelectItem>
+                    <MudSelectItem Value="@("cancelled")">@LocalizationSvc.GetString("TermStatusCancelled")</MudSelectItem>
+                    <MudSelectItem Value="@("moved")">@LocalizationSvc.GetString("TermStatusMoved")</MudSelectItem>
+                </MudSelect>
+
+                <MudTextField T="string" @bind-Value="Model.Notes"
+                              Label="@LocalizationSvc.GetString("TermNotesLabel")"
+                              Variant="Variant.Outlined"
+                              Lines="2" />
+            </MudStack>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Color="Color.Default" Variant="Variant.Text">
+            @LocalizationSvc.GetString("Cancel")
+        </MudButton>
+        <MudButton OnClick="Submit" Color="Color.Primary" Variant="Variant.Filled" Disabled="!_isValid || _startDate is null || _endDate is null">
+            @(IsNew ? LocalizationSvc.GetString("Add") : LocalizationSvc.GetString("Save"))
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public CourseTerm Model { get; set; } = new();
+    [Parameter] public bool IsNew { get; set; }
+
+    private MudForm _form = null!;
+    private bool _isValid;
+    private DateTime? _startDate;
+    private DateTime? _endDate;
+
+    protected override void OnInitialized()
+    {
+        _startDate = IsNew ? DateTime.Today : Model.StartDate;
+        _endDate = IsNew ? DateTime.Today : Model.EndDate;
+    }
+
+    private async Task Submit()
+    {
+        await _form.ValidateAsync();
+        if (!_isValid || _startDate is null || _endDate is null) return;
+
+        Model.StartDate = _startDate.Value;
+        Model.EndDate = _endDate.Value;
+        if (IsNew) Model.Source = "manual";
+
+        MudDialog.Close(DialogResult.Ok(Model));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

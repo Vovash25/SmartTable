@@ -1,0 +1,311 @@
+@page "/courses/{CourseId:guid}/terms"
+@using SmartTable.Client.Models
+@inject ICourseService CourseSvc
+@inject ICourseTermService CourseTermSvc
+@inject ICourseTermTemplateService TemplateSvc
+@inject IEnrollmentService EnrollSvc
+@inject IDialogService DialogSvc
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+@inject SmartTable.Client.Services.LocalizationService LocalizationSvc
+@implements IDisposable
+
+<PageTitle>@LocalizationSvc.GetString("CourseDatesHeader") — SmartTable</PageTitle>
+
+<MudButton Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ArrowBack"
+           OnClick='@(() => Nav.NavigateTo("/courses"))' Class="mb-2">
+    @LocalizationSvc.GetString("Courses")
+</MudButton>
+
+<div class="d-flex align-center justify-space-between mb-4">
+    <MudText Typo="Typo.h5" Style="font-weight:700;">
+        @(_course is null ? "…" : $"{_course.CourseType} {_course.Language}") — @LocalizationSvc.GetString("CourseDatesHeader")
+    </MudText>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.AddCircleOutline"
+               OnClick="OpenAddTermDialog" Disabled="_loading">
+        @LocalizationSvc.GetString("AddDateButton")
+    </MudButton>
+</div>
+
+@* ── Шаблони генерації термінів ─────────────────────────────────────────── *@
+<MudPaper Elevation="0" Class="pa-4 mb-4" Style="background-color: var(--mud-palette-background-grey); border-radius: 8px;">
+    <div class="d-flex align-center justify-space-between mb-3">
+        <MudText Typo="Typo.subtitle1" Color="Color.Primary">
+            <MudIcon Icon="@Icons.Material.Filled.Repeat" Size="Size.Small" Class="mr-1 mb-1" />
+            @LocalizationSvc.GetString("TemplatesHeader")
+        </MudText>
+        <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Primary" OnClick="OpenAddTemplateDialog">
+            @LocalizationSvc.GetString("AddTemplateButton")
+        </MudButton>
+    </div>
+
+    @if (!_templates.Any())
+    {
+        <MudText Typo="Typo.body2" Color="Color.Secondary">@LocalizationSvc.GetString("NoTemplatesYet")</MudText>
+    }
+    else
+    {
+        <MudSimpleTable Dense="true" Hover="true">
+            <thead>
+                <tr>
+                    <th>@LocalizationSvc.GetString("FrequencyLabel")</th>
+                    <th>@LocalizationSvc.GetString("GenerateFromLabel")</th>
+                    <th>@LocalizationSvc.GetString("GenerateToLabel")</th>
+                    <th>@LocalizationSvc.GetString("TemplateActiveLabel")</th>
+                    <th>@LocalizationSvc.GetString("ActionCol")</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var t in _templates)
+                {
+                    <tr>
+                        <td>@FrequencyLabel(t.Frequency)</td>
+                        <td>@t.GenerateFrom.ToString("dd.MM.yyyy")</td>
+                        <td>@t.GenerateTo.ToString("dd.MM.yyyy")</td>
+                        <td>
+                            <MudChip T="string" Size="Size.Small" Color="@(t.IsActive ? Color.Success : Color.Default)">
+                                @(t.IsActive ? LocalizationSvc.GetString("Yes") : LocalizationSvc.GetString("Cancel"))
+                            </MudChip>
+                        </td>
+                        <td>
+                            <MudStack Row="true" Spacing="1">
+                                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary"
+                                           OnClick="@(() => GenerateFromTemplate(t))">
+                                    @LocalizationSvc.GetString("GenerateButton")
+                                </MudButton>
+                                <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Size="Size.Small" Color="Color.Error"
+                                               OnClick="@(() => DeleteTemplate(t))" />
+                            </MudStack>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    }
+</MudPaper>
+
+@* ── Терміни ──────────────────────────────────────────────────────────────── *@
+<MudDataGrid T="CourseTerm" Items="_terms" Dense="true" Hover="true" Loading="_loading">
+    <Columns>
+        <TemplateColumn Title="@LocalizationSvc.GetString("StartDateLabel")">
+            <CellTemplate>@context.Item.StartDate.ToString("dd.MM.yyyy")</CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="@LocalizationSvc.GetString("EndDateLabelShort")">
+            <CellTemplate>@context.Item.EndDate.ToString("dd.MM.yyyy")</CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="@LocalizationSvc.GetString("EnrolledStudentsHeader")">
+            <CellTemplate>@GetEnrollmentsForTerm(context.Item.Id).Count</CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="@LocalizationSvc.GetString("TrainerLabel")">
+            <CellTemplate>@(string.IsNullOrWhiteSpace(context.Item.Trainer) ? "—" : context.Item.Trainer)</CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="@LocalizationSvc.GetString("TermStatusLabel")">
+            <CellTemplate>
+                <MudChip T="string" Size="Size.Small" Color="@TermStatusColor(context.Item.Status)">@TermStatusLabel(context.Item.Status)</MudChip>
+            </CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="@LocalizationSvc.GetString("SourceCol")">
+            <CellTemplate>
+                <MudChip T="string" Size="Size.Small" Color="@(context.Item.Source == "generated" ? Color.Info : Color.Default)">
+                    @(context.Item.Source == "generated" ? LocalizationSvc.GetString("SourceGenerated") : LocalizationSvc.GetString("SourceManual"))
+                </MudChip>
+                @if (context.Item.ManuallyModified)
+                {
+                    <MudTooltip Text="@LocalizationSvc.GetString("ManuallyModifiedTooltip")">
+                        <MudIcon Icon="@Icons.Material.Filled.EditNote" Size="Size.Small" Class="ml-1" />
+                    </MudTooltip>
+                }
+            </CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="@LocalizationSvc.GetString("ActionCol")" CellStyle="width:160px;">
+            <CellTemplate>
+                <MudStack Row="true" Spacing="1">
+                    <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Primary"
+                               OnClick="@(() => Nav.NavigateTo($"/courses/terms/{context.Item.Id}/people"))">
+                        @LocalizationSvc.GetString("OpenAction")
+                    </MudButton>
+                    <MudTooltip Text="@LocalizationSvc.GetString("Edit")">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="@(() => OpenEditTermDialog(context.Item))" />
+                    </MudTooltip>
+                    <MudTooltip Text="@LocalizationSvc.GetString("DeleteDateTooltip")">
+                        <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteTerm(context.Item))" />
+                    </MudTooltip>
+                </MudStack>
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+    <NoRecordsContent>
+        <MudText Color="Color.Secondary">@LocalizationSvc.GetString("NoDatesYet")</MudText>
+    </NoRecordsContent>
+</MudDataGrid>
+
+@code {
+    [Parameter] public Guid CourseId { get; set; }
+
+    private Course? _course;
+    private List<CourseTerm> _terms = new();
+    private List<CourseTermTemplate> _templates = new();
+    private List<Enrollment> _enrollments = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        LocalizationSvc.OnLanguageChanged += StateHasChanged;
+        await LoadDataAsync();
+    }
+
+    public void Dispose() => LocalizationSvc.OnLanguageChanged -= StateHasChanged;
+
+    private async Task LoadDataAsync()
+    {
+        _loading = true;
+        try
+        {
+            var courses = await CourseSvc.GetAllAsync();
+            _course = courses.FirstOrDefault(c => c.Id == CourseId);
+            _terms = await CourseTermSvc.GetAllAsync(CourseId);
+            _templates = await TemplateSvc.GetAllAsync(CourseId);
+            _enrollments = await EnrollSvc.GetAllAsync();
+        }
+        catch { Snackbar.Add(LocalizationSvc.GetString("ErrorLoadingData"), Severity.Error); }
+        finally { _loading = false; }
+    }
+
+    private List<Enrollment> GetEnrollmentsForTerm(Guid termId) =>
+        _enrollments.Where(e => e.CourseTermId == termId).ToList();
+
+    private static string TermStatusLabel(string status) => status switch
+    {
+        "planned" => "Zaplanowany",
+        "active" => "Aktywny",
+        "finished" => "Zakończony",
+        "cancelled" => "Anulowany",
+        "moved" => "Przeniesiony",
+        _ => status
+    };
+
+    private static Color TermStatusColor(string status) => status switch
+    {
+        "planned" => Color.Default,
+        "active" => Color.Warning,
+        "finished" => Color.Info,
+        "cancelled" => Color.Error,
+        "moved" => Color.Dark,
+        _ => Color.Default
+    };
+
+    private static string FrequencyLabel(string frequency) => frequency switch
+    {
+        "weekly" => "Co tydzień",
+        "biweekly" => "Co 2 tygodnie",
+        "every_3_weeks" => "Co 3 tygodnie",
+        "monthly" => "Co miesiąc",
+        _ => frequency
+    };
+
+    private async Task OpenAddTermDialog()
+    {
+        var parameters = new DialogParameters { ["Model"] = new CourseTerm { CourseId = CourseId }, ["IsNew"] = true };
+        var dialog = await DialogSvc.ShowAsync<AddCourseTermDialog>(LocalizationSvc.GetString("AddDateButton"), parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true });
+
+        var result = await dialog.Result;
+        if (!result.Canceled && result.Data is CourseTerm term)
+        {
+            var created = await CourseTermSvc.CreateAsync(term);
+            if (created is not null)
+            {
+                Snackbar.Add(LocalizationSvc.GetString("SavedSuccessfully"), Severity.Success);
+                await LoadDataAsync();
+            }
+            else Snackbar.Add(LocalizationSvc.GetString("SaveError"), Severity.Error);
+        }
+    }
+
+    private async Task OpenEditTermDialog(CourseTerm term)
+    {
+        var copy = new CourseTerm
+        {
+            Id = term.Id, CourseId = term.CourseId, StartDate = term.StartDate, EndDate = term.EndDate,
+            DefaultPrice = term.DefaultPrice, SeatLimit = term.SeatLimit, Trainer = term.Trainer,
+            Status = term.Status, Source = term.Source, ManuallyModified = term.ManuallyModified, Notes = term.Notes
+        };
+
+        var parameters = new DialogParameters { ["Model"] = copy, ["IsNew"] = false };
+        var dialog = await DialogSvc.ShowAsync<AddCourseTermDialog>(LocalizationSvc.GetString("Edit"), parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true });
+
+        var result = await dialog.Result;
+        if (!result.Canceled && result.Data is CourseTerm updated)
+        {
+            var success = await CourseTermSvc.UpdateAsync(updated);
+            if (success)
+            {
+                Snackbar.Add(LocalizationSvc.GetString("SavedSuccessfully"), Severity.Success);
+                await LoadDataAsync();
+            }
+            else Snackbar.Add(LocalizationSvc.GetString("SaveError"), Severity.Error);
+        }
+    }
+
+    private async Task DeleteTerm(CourseTerm term)
+    {
+        var confirmed = await DialogSvc.ShowMessageBoxAsync(LocalizationSvc.GetString("Confirmation"),
+            $"{LocalizationSvc.GetString("DeleteDateConfirmMessage")} {term.StartDate:dd.MM.yyyy}?",
+            yesText: LocalizationSvc.GetString("Yes"), cancelText: LocalizationSvc.GetString("Cancel"));
+
+        if (confirmed == true)
+        {
+            var success = await CourseTermSvc.DeleteAsync(term.Id);
+            if (success) { Snackbar.Add(LocalizationSvc.GetString("Deleted"), Severity.Success); await LoadDataAsync(); }
+            else Snackbar.Add(LocalizationSvc.GetString("DeleteError"), Severity.Error);
+        }
+    }
+
+    private async Task OpenAddTemplateDialog()
+    {
+        var parameters = new DialogParameters { ["Model"] = new CourseTermTemplate { CourseId = CourseId } };
+        var dialog = await DialogSvc.ShowAsync<CourseTermTemplateDialog>(LocalizationSvc.GetString("AddTemplateButton"), parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true });
+
+        var result = await dialog.Result;
+        if (!result.Canceled && result.Data is CourseTermTemplate template)
+        {
+            var created = await TemplateSvc.CreateAsync(template);
+            if (created is not null)
+            {
+                Snackbar.Add(LocalizationSvc.GetString("SavedSuccessfully"), Severity.Success);
+                await LoadDataAsync();
+            }
+            else Snackbar.Add(LocalizationSvc.GetString("SaveError"), Severity.Error);
+        }
+    }
+
+    private async Task GenerateFromTemplate(CourseTermTemplate template)
+    {
+        var result = await TemplateSvc.GenerateAsync(template.Id);
+        if (result is not null)
+        {
+            Snackbar.Add($"{LocalizationSvc.GetString("GeneratedCountMessage")}: {result.CreatedCount} ({LocalizationSvc.GetString("SkippedCountMessage")}: {result.SkippedExisting})", Severity.Success);
+            await LoadDataAsync();
+        }
+        else
+        {
+            Snackbar.Add(LocalizationSvc.GetString("GenerateError"), Severity.Error);
+        }
+    }
+
+    private async Task DeleteTemplate(CourseTermTemplate template)
+    {
+        var confirmed = await DialogSvc.ShowMessageBoxAsync(LocalizationSvc.GetString("Confirmation"),
+            LocalizationSvc.GetString("DeleteTemplateConfirmMessage"),
+            yesText: LocalizationSvc.GetString("Yes"), cancelText: LocalizationSvc.GetString("Cancel"));
+
+        if (confirmed == true)
+        {
+            var success = await TemplateSvc.DeleteAsync(template.Id);
+            if (success) { Snackbar.Add(LocalizationSvc.GetString("Deleted"), Severity.Success); await LoadDataAsync(); }
+            else Snackbar.Add(LocalizationSvc.GetString("DeleteError"), Severity.Error);
+        }
+    }
+}

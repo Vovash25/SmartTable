@@ -1,0 +1,143 @@
+@page "/courses/terms/{TermId:guid}/people"
+@using SmartTable.Client.Models
+@inject ICourseTermService CourseTermSvc
+@inject IEnrollmentService EnrollSvc
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@inject SmartTable.Client.Services.LocalizationService LocalizationSvc
+@implements IDisposable
+
+<PageTitle>@LocalizationSvc.GetString("EnrolledStudentsHeader") — SmartTable</PageTitle>
+
+<MudButton Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ArrowBack"
+           OnClick="GoBack" Class="mb-2">
+    @LocalizationSvc.GetString("CourseDatesHeader")
+</MudButton>
+
+<MudText Typo="Typo.h5" Style="font-weight:700;" Class="mb-1">
+    @(_term is null ? "…" : $"{_term.Course?.CourseType} {_term.Course?.Language} — {_term.StartDate:dd.MM.yyyy} – {_term.EndDate:dd.MM.yyyy}")
+</MudText>
+<MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-4">
+    @LocalizationSvc.GetString("EnrolledStudentsHeader"): @_enrollments.Count
+</MudText>
+
+<MudDataGrid T="Enrollment" Items="_enrollments" Dense="true" Hover="true" Loading="_loading">
+    <Columns>
+        <TemplateColumn Title="@LocalizationSvc.GetString("FullNameCol")">
+            <CellTemplate>@(context.Item.Student?.FullName ?? "—")</CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="@LocalizationSvc.GetString("CompanyCol")">
+            <CellTemplate>@(string.IsNullOrWhiteSpace(context.Item.CompanyName) ? LocalizationSvc.GetString("PrivatelyText") : context.Item.CompanyName)</CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="@LocalizationSvc.GetString("AttendanceCol")">
+            <CellTemplate>
+                <MudChip T="string" Size="Size.Small" Color="@AttendanceColor(context.Item.AttendanceStatus)">@AttendanceLabel(context.Item.AttendanceStatus)</MudChip>
+            </CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="@LocalizationSvc.GetString("DocumentsHeader")">
+            <CellTemplate>@DocLabel(context.Item.DocumentsStatus)</CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="@LocalizationSvc.GetString("PaymentStatusLabel")">
+            <CellTemplate>
+                <MudChip T="string" Size="Size.Small" Color="@PaymentColor(context.Item.PaymentStatus)">@PaymentLabel(context.Item.PaymentStatus)</MudChip>
+            </CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="@LocalizationSvc.GetString("AmountPaidLabel")">
+            <CellTemplate>@context.Item.AmountPaid.ToString("0.##") zł</CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="@LocalizationSvc.GetString("ActionCol")">
+            <CellTemplate>
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Primary"
+                           OnClick='@(() => Nav.NavigateTo("/students"))'>
+                    @LocalizationSvc.GetString("OpenStudentCardAction")
+                </MudButton>
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+    <NoRecordsContent>
+        <MudText Color="Color.Secondary">@LocalizationSvc.GetString("NoStudentsForDate")</MudText>
+    </NoRecordsContent>
+</MudDataGrid>
+
+@code {
+    [Parameter] public Guid TermId { get; set; }
+
+    private CourseTerm? _term;
+    private List<Enrollment> _enrollments = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        LocalizationSvc.OnLanguageChanged += StateHasChanged;
+        await LoadDataAsync();
+    }
+
+    public void Dispose() => LocalizationSvc.OnLanguageChanged -= StateHasChanged;
+
+    private async Task LoadDataAsync()
+    {
+        _loading = true;
+        try
+        {
+            var allTerms = await CourseTermSvc.GetAllAsync();
+            _term = allTerms.FirstOrDefault(t => t.Id == TermId);
+
+            var allEnrollments = await EnrollSvc.GetAllAsync();
+            _enrollments = allEnrollments.Where(e => e.CourseTermId == TermId).ToList();
+        }
+        catch { Snackbar.Add(LocalizationSvc.GetString("ErrorLoadingData"), Severity.Error); }
+        finally { _loading = false; }
+    }
+
+    private void GoBack()
+    {
+        if (_term is not null) Nav.NavigateTo($"/courses/{_term.CourseId}/terms");
+        else Nav.NavigateTo("/courses");
+    }
+
+    private static string AttendanceLabel(string status) => status switch
+    {
+        "waiting_arrival" => "Oczekuje na przyjazd",
+        "arrived" => "Dojechał",
+        "no_show" => "Nie dojechał",
+        "late" => "Spóźniony",
+        _ => status
+    };
+
+    private static Color AttendanceColor(string status) => status switch
+    {
+        "arrived" => Color.Success,
+        "no_show" => Color.Error,
+        "late" => Color.Warning,
+        _ => Color.Default
+    };
+
+    private static string DocLabel(string status) => status switch
+    {
+        "not_checked" => "Nie sprawdzono",
+        "missing" => "Brak",
+        "partial" => "Częściowo",
+        "received" => "Otrzymano",
+        "not_required" => "Niewymagane",
+        _ => status
+    };
+
+    private static string PaymentLabel(string status) => status switch
+    {
+        "unpaid" => "Nie zapłacono",
+        "partial" => "Częściowo zapłacono",
+        "paid" => "Zapłacono",
+        "overpaid" => "Nadpłata",
+        "not_required" => "Niewymagane",
+        _ => status
+    };
+
+    private static Color PaymentColor(string status) => status switch
+    {
+        "unpaid" => Color.Error,
+        "partial" => Color.Warning,
+        "paid" => Color.Success,
+        "overpaid" => Color.Info,
+        _ => Color.Default
+    };
+}

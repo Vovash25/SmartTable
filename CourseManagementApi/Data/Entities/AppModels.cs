@@ -91,7 +91,10 @@ namespace CourseManagementApi.Data.Entities
         public ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
     }
 
-    // --- 4. КУРСИ ---
+    // --- 4. КУРСИ (словник: тип + мова, обидва з закритого списку) ---
+    // Мова курсу — лише RUS / ENG, тип — лише ADR / KWP / SO.
+    // Обмеження на "тільки ці значення" реалізоване на рівні UI (dropdown),
+    // без вільного текстового поля — так, як вимагає ТЗ.
     [Table("courses")]
     public class Course
     {
@@ -101,21 +104,120 @@ namespace CourseManagementApi.Data.Entities
 
         [Required]
         [Column("course_type")]
-        public string CourseType { get; set; } = string.Empty;
+        public string CourseType { get; set; } = string.Empty; // ADR | KWP | SO
 
         [Required]
         [Column("language")]
-        public string Language { get; set; } = string.Empty;
+        public string Language { get; set; } = string.Empty; // RUS | ENG
+
+        public ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
+        public ICollection<CourseTerm> CourseTerms { get; set; } = new List<CourseTerm>();
+        public ICollection<CourseTermTemplate> CourseTermTemplates { get; set; } = new List<CourseTermTemplate>();
+    }
+
+    // --- 4b. ШАБЛОН ГЕНЕРАЦІЇ ТЕРМІНІВ ---
+    // Дозволяє одним разом створити багато термінів за циклічним правилом
+    // (напр. "щопонеділка з 01.08 по 31.12"). Сам шаблон не є "живим" терміном —
+    // це лише інструкція для генератора.
+    [Table("course_term_templates")]
+    public class CourseTermTemplate
+    {
+        [Key]
+        [Column("id")]
+        public Guid Id { get; set; } = Guid.NewGuid();
+
+        [Column("course_id")]
+        public Guid CourseId { get; set; }
+        public Course? Course { get; set; }
+
+        // "cyclic" — генерується за правилом; "manual" — шаблон лише для довідки,
+        // терміни завжди додаються вручну.
+        [Column("mode")]
+        public string Mode { get; set; } = "cyclic";
+
+        // День тижня (0 = неділя ... 6 = субота), потрібен лише для "cyclic".
+        [Column("day_of_week")]
+        public int? DayOfWeek { get; set; }
+
+        // weekly | biweekly | every_3_weeks | monthly | manual_only
+        [Column("frequency")]
+        public string Frequency { get; set; } = "weekly";
+
+        [Column("generate_from")]
+        public DateTime GenerateFrom { get; set; }
+
+        [Column("generate_to")]
+        public DateTime GenerateTo { get; set; }
+
+        // Скільки днів триває один термін (1 = один день, 3 = три дні і т.д.)
+        [Column("default_duration_days")]
+        public int DefaultDurationDays { get; set; } = 1;
+
+        [Column("default_price")]
+        public decimal? DefaultPrice { get; set; }
+
+        [Column("seat_limit")]
+        public int? SeatLimit { get; set; }
+
+        [Column("is_active")]
+        public bool IsActive { get; set; } = true;
+
+        [Column("notes")]
+        public string? Notes { get; set; }
+
+        [Column("created_at")]
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    }
+
+    // --- 4c. ТЕРМІН КУРСУ (конкретна запланована дата/період) ---
+    [Table("course_terms")]
+    public class CourseTerm
+    {
+        [Key]
+        [Column("id")]
+        public Guid Id { get; set; } = Guid.NewGuid();
+
+        [Column("course_id")]
+        public Guid CourseId { get; set; }
+        public Course? Course { get; set; }
+
+        [Column("start_date")]
+        public DateTime StartDate { get; set; }
+
+        [Column("end_date")]
+        public DateTime EndDate { get; set; }
+
+        [Column("default_price")]
+        public decimal? DefaultPrice { get; set; }
+
+        [Column("seat_limit")]
+        public int? SeatLimit { get; set; }
+
+        [Column("trainer")]
+        public string? Trainer { get; set; }
+
+        // planned | active | finished | cancelled | moved
+        [Column("status")]
+        public string Status { get; set; } = "planned";
+
+        // generated (створено шаблоном) | manual (додано вручну)
+        [Column("source")]
+        public string Source { get; set; } = "manual";
+
+        // Чи термін, згенерований шаблоном, потім хтось відредагував вручну
+        [Column("manually_modified")]
+        public bool ManuallyModified { get; set; } = false;
+
+        [Column("notes")]
+        public string? Notes { get; set; }
+
+        [Column("created_at")]
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
     }
 
     // --- 5. РЕЄСТРАЦІЇ (Enrollments) ---
-    // УВАГА: раніше цей клас не мав жодного [Column] атрибута, через що EF Core
-    // генерував SQL із "сирими" PascalCase назвами (e."StudentId", e."Id" тощо),
-    // а фізичні колонки в Postgres — snake_case (student_id, id...). Звідси помилки
-    // "column e.StudentId does not exist". Додано явні [Table]/[Column] за тим самим
-    // шаблоном, що вже використовується в Student/Course/CandidateRegistration.
     [Table("enrollments")]
     public class Enrollment
     {
@@ -130,6 +232,13 @@ namespace CourseManagementApi.Data.Entities
         [Column("course_id")]
         public Guid CourseId { get; set; }
         public Course? Course { get; set; }
+
+        // Прив'язка до конкретного терміну курсу. Обов'язкова логічно
+        // (призначення тепер відбувається лише через вибір терміну),
+        // але лишаємо nullable на рівні БД про всяк випадок.
+        [Column("course_term_id")]
+        public Guid? CourseTermId { get; set; }
+        public CourseTerm? CourseTerm { get; set; }
 
         [Column("arrival_date")]
         public DateTime? ArrivalDate { get; set; }
@@ -168,12 +277,11 @@ namespace CourseManagementApi.Data.Entities
         public string? HotelStayRange { get; set; }
 
         [Column("status")]
-        public string Status { get; set; } = "Active"; // Status końcowy
+        public string Status { get; set; } = "Active";
 
         [Column("notes")]
-        public string? Notes { get; set; } // Uwagi biura
+        public string? Notes { get; set; }
 
-        // === POLA KARTY OBSŁUGI (Etap 3) ===
         [Column("attendance_status")]
         public string AttendanceStatus { get; set; } = "waiting_arrival";
 
@@ -325,5 +433,33 @@ namespace CourseManagementApi.Data.Entities
 
         [Column("updated_by")]
         public Guid? UpdatedBy { get; set; }
+    }
+
+    // --- 7. КОРИСТУВАЧІ (Admin/SuperAdmin) ---
+    [Table("app_users")]
+    public class AppUser
+    {
+        [Key]
+        [Column("id")]
+        public Guid Id { get; set; } = Guid.NewGuid();
+
+        [Required]
+        [Column("username")]
+        public string Username { get; set; } = string.Empty;
+
+        [Required]
+        [Column("password_hash")]
+        public string PasswordHash { get; set; } = string.Empty;
+
+        [Required]
+        [Column("password_salt")]
+        public string PasswordSalt { get; set; } = string.Empty;
+
+        [Required]
+        [Column("role")]
+        public string Role { get; set; } = "Admin";
+
+        [Column("created_at")]
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }

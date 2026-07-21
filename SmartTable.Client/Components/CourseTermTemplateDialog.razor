@@ -1,0 +1,107 @@
+@using SmartTable.Client.Models
+@inject SmartTable.Client.Services.LocalizationService LocalizationSvc
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_isValid">
+            <MudStack Spacing="3">
+                <MudSelect T="string" @bind-Value="Model.Mode"
+                           Label="@LocalizationSvc.GetString("TemplateModeLabel")"
+                           Variant="Variant.Outlined">
+                    <MudSelectItem Value="@("cyclic")">@LocalizationSvc.GetString("TemplateModeCyclic")</MudSelectItem>
+                    <MudSelectItem Value="@("manual")">@LocalizationSvc.GetString("TemplateModeManual")</MudSelectItem>
+                </MudSelect>
+
+                @if (Model.Mode == "cyclic")
+                {
+                    <MudSelect T="int?" @bind-Value="Model.DayOfWeek"
+                               Label="@LocalizationSvc.GetString("DayOfWeekLabel")"
+                               Variant="Variant.Outlined"
+                               Required="true"
+                               RequiredError="@LocalizationSvc.GetString("RequiredField")">
+                        <MudSelectItem Value="@((int?)1)">@LocalizationSvc.GetString("DayMonday")</MudSelectItem>
+                        <MudSelectItem Value="@((int?)2)">@LocalizationSvc.GetString("DayTuesday")</MudSelectItem>
+                        <MudSelectItem Value="@((int?)3)">@LocalizationSvc.GetString("DayWednesday")</MudSelectItem>
+                        <MudSelectItem Value="@((int?)4)">@LocalizationSvc.GetString("DayThursday")</MudSelectItem>
+                        <MudSelectItem Value="@((int?)5)">@LocalizationSvc.GetString("DayFriday")</MudSelectItem>
+                        <MudSelectItem Value="@((int?)6)">@LocalizationSvc.GetString("DaySaturday")</MudSelectItem>
+                        <MudSelectItem Value="@((int?)0)">@LocalizationSvc.GetString("DaySunday")</MudSelectItem>
+                    </MudSelect>
+
+                    <MudSelect T="string" @bind-Value="Model.Frequency"
+                               Label="@LocalizationSvc.GetString("FrequencyLabel")"
+                               Variant="Variant.Outlined">
+                        <MudSelectItem Value="@("weekly")">@LocalizationSvc.GetString("FrequencyWeekly")</MudSelectItem>
+                        <MudSelectItem Value="@("biweekly")">@LocalizationSvc.GetString("FrequencyBiweekly")</MudSelectItem>
+                        <MudSelectItem Value="@("every_3_weeks")">@LocalizationSvc.GetString("FrequencyEvery3Weeks")</MudSelectItem>
+                        <MudSelectItem Value="@("monthly")">@LocalizationSvc.GetString("FrequencyMonthly")</MudSelectItem>
+                    </MudSelect>
+
+                    <MudDatePicker @bind-Date="_generateFrom"
+                                   Label="@LocalizationSvc.GetString("GenerateFromLabel")"
+                                   Variant="Variant.Outlined" DateFormat="dd.MM.yyyy"
+                                   Required="true" RequiredError="@LocalizationSvc.GetString("RequiredField")" />
+
+                    <MudDatePicker @bind-Date="_generateTo"
+                                   Label="@LocalizationSvc.GetString("GenerateToLabel")"
+                                   Variant="Variant.Outlined" DateFormat="dd.MM.yyyy"
+                                   Required="true" RequiredError="@LocalizationSvc.GetString("RequiredField")" />
+                }
+
+                <MudNumericField T="int" @bind-Value="Model.DefaultDurationDays"
+                                 Label="@LocalizationSvc.GetString("DefaultDurationLabel")"
+                                 Variant="Variant.Outlined" Min="1" />
+
+                <MudNumericField T="decimal?" @bind-Value="Model.DefaultPrice"
+                                 Label="@LocalizationSvc.GetString("DefaultPriceLabel")"
+                                 Variant="Variant.Outlined" Format="0.##"
+                                 Adornment="Adornment.End" AdornmentText="zł" />
+
+                <MudNumericField T="int?" @bind-Value="Model.SeatLimit"
+                                 Label="@LocalizationSvc.GetString("SeatLimitLabel")"
+                                 Variant="Variant.Outlined" />
+
+                <MudSwitch T="bool" @bind-Value="Model.IsActive" Color="Color.Primary"
+                           Label="@LocalizationSvc.GetString("TemplateActiveLabel")" />
+
+                <MudTextField T="string" @bind-Value="Model.Notes"
+                              Label="@LocalizationSvc.GetString("TermNotesLabel")"
+                              Variant="Variant.Outlined" Lines="2" />
+            </MudStack>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Color="Color.Default" Variant="Variant.Text">
+            @LocalizationSvc.GetString("Cancel")
+        </MudButton>
+        <MudButton OnClick="Submit" Color="Color.Primary" Variant="Variant.Filled" Disabled="!_isValid">
+            @LocalizationSvc.GetString("Add")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public CourseTermTemplate Model { get; set; } = new();
+
+    private MudForm _form = null!;
+    private bool _isValid;
+    private DateTime? _generateFrom = DateTime.Today;
+    private DateTime? _generateTo = DateTime.Today.AddMonths(3);
+
+    private async Task Submit()
+    {
+        await _form.ValidateAsync();
+        if (!_isValid) return;
+
+        if (Model.Mode == "cyclic")
+        {
+            Model.GenerateFrom = _generateFrom ?? DateTime.Today;
+            Model.GenerateTo = _generateTo ?? DateTime.Today.AddMonths(3);
+        }
+
+        MudDialog.Close(DialogResult.Ok(Model));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

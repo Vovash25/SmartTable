@@ -13,8 +13,45 @@ public class Student
 public class Course
 {
     public Guid Id { get; set; }
-    public string CourseType { get; set; } = string.Empty;
-    public string Language { get; set; } = string.Empty;
+    public string CourseType { get; set; } = string.Empty; // ADR | KWP | SO
+    public string Language { get; set; } = string.Empty;   // RUS | ENG
+}
+
+// Шаблон для генерації термінів за циклічним правилом
+public class CourseTermTemplate
+{
+    public Guid Id { get; set; }
+    public Guid CourseId { get; set; }
+    public Course? Course { get; set; }
+    public string Mode { get; set; } = "cyclic"; // cyclic | manual
+    public int? DayOfWeek { get; set; } // 0=Sunday..6=Saturday
+    public string Frequency { get; set; } = "weekly"; // weekly | biweekly | every_3_weeks | monthly | manual_only
+    public DateTime GenerateFrom { get; set; } = DateTime.Today;
+    public DateTime GenerateTo { get; set; } = DateTime.Today.AddMonths(3);
+    public int DefaultDurationDays { get; set; } = 1;
+    public decimal? DefaultPrice { get; set; }
+    public int? SeatLimit { get; set; }
+    public bool IsActive { get; set; } = true;
+    public string? Notes { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
+}
+
+// Конкретний запланований термін проведення курсу
+public class CourseTerm
+{
+    public Guid Id { get; set; }
+    public Guid CourseId { get; set; }
+    public Course? Course { get; set; }
+    public DateTime StartDate { get; set; } = DateTime.Today;
+    public DateTime EndDate { get; set; } = DateTime.Today;
+    public decimal? DefaultPrice { get; set; }
+    public int? SeatLimit { get; set; }
+    public string? Trainer { get; set; }
+    public string Status { get; set; } = "planned"; // planned | active | finished | cancelled | moved
+    public string Source { get; set; } = "manual"; // generated | manual
+    public bool ManuallyModified { get; set; } = false;
+    public string? Notes { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
 }
 
 public class Enrollment
@@ -24,8 +61,10 @@ public class Enrollment
     public Student? Student { get; set; }
     public Guid CourseId { get; set; }
     public Course? Course { get; set; }
-    
-    // Змінено на DateTime? для коректної роботи MudDatePicker
+
+    public Guid? CourseTermId { get; set; }
+    public CourseTerm? CourseTerm { get; set; }
+
     public DateTime? ArrivalDate { get; set; } 
     public decimal CoursePrice { get; set; }
     public decimal? MedicalExamPrice { get; set; }
@@ -41,7 +80,6 @@ public class Enrollment
     public string Status { get; set; } = "Active";
     public string? Notes { get; set; }
 
-    // === НОВІ ПОЛЯ ДЛЯ КАРТКИ ОБСЛУГОВУВАННЯ (Etap 3) ===
     public string AttendanceStatus { get; set; } = "waiting_arrival";
     public string DocumentsStatus { get; set; } = "not_checked";
     

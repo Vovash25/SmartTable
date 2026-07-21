@@ -25,6 +25,7 @@ namespace CourseManagementApi.Controllers
             return await _context.Enrollments
                 .Include(e => e.Student)
                 .Include(e => e.Course)
+                .Include(e => e.CourseTerm)
                 .ToListAsync();
         }
 

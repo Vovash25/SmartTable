@@ -1,7 +1,10 @@
 @page "/courses"
+@using SmartTable.Client.Models
 @inject ICourseService CourseSvc
+@inject ICourseTermService CourseTermSvc
 @inject IDialogService DialogSvc
 @inject ISnackbar Snackbar
+@inject NavigationManager Nav
 @inject SmartTable.Client.Services.LocalizationService LocalizationSvc
 @implements IDisposable
 
@@ -16,20 +19,20 @@
     </div>
     <MudButton Variant="Variant.Filled"
                Color="Color.Primary"
-               StartIcon="@Icons.Material.Filled.AddCircleOutline"
+               StartIcon="@Icons.Material.Filled.Add"
                OnClick="OpenAddDialog"
                Disabled="_loading">
         @LocalizationSvc.GetString("AddCourse")
     </MudButton>
 </div>
 
-<MudTextField @bind-Value="_search"
+<MudTextField @bind-Value="_searchTerm"
               Placeholder="@LocalizationSvc.GetString("SearchByTypeOrLanguage")"
               Adornment="Adornment.Start"
               AdornmentIcon="@Icons.Material.Filled.Search"
               Variant="Variant.Outlined"
               Immediate="true"
-              DebounceInterval="200"
+              DebounceInterval="250"
               Class="mb-4"
               Style="max-width:400px;" />
 
@@ -41,19 +44,35 @@
              Dense="true"
              Loading="_loading">
     <Columns>
-        <PropertyColumn Property="x => x.CourseType" Title="@LocalizationSvc.GetString("CourseType")" Sortable="true" />
-        <PropertyColumn Property="x => x.Language"   Title="@LocalizationSvc.GetString("Language_col")" Sortable="true" />
-        <TemplateColumn Title="@LocalizationSvc.GetString("Actions")" CellStyle="width:100px;" Context="col">
+        <TemplateColumn Title="@LocalizationSvc.GetString("Course")">
+            <CellTemplate>
+                <strong>@context.Item.CourseType @context.Item.Language</strong>
+            </CellTemplate>
+        </TemplateColumn>
+        <PropertyColumn Property="x => x.CourseType" Title="@LocalizationSvc.GetString("CourseType")" />
+        <PropertyColumn Property="x => x.Language" Title="@LocalizationSvc.GetString("Language_col")" />
+        <TemplateColumn Title="@LocalizationSvc.GetString("FutureTermsCountCol")">
+            <CellTemplate>@GetFutureTermsCount(context.Item.Id)</CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="@LocalizationSvc.GetString("NearestTermCol")">
+            <CellTemplate>
+                @{ var nearest = GetNearestTerm(context.Item.Id); }
+                @(nearest is null ? "—" : nearest.StartDate.ToString("dd.MM.yyyy"))
+            </CellTemplate>
+        </TemplateColumn>
+        <TemplateColumn Title="@LocalizationSvc.GetString("ActionCol")" CellStyle="width:160px;">
             <CellTemplate>
                 <MudStack Row="true" Spacing="1">
-                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                   Size="Size.Small"
-                                   Color="Color.Primary"
-                                   OnClick="@(() => OpenEditDialog(col.Item))" />
-                    <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline"
-                                   Size="Size.Small"
-                                   Color="Color.Error"
-                                   OnClick="@(() => DeleteCourse(col.Item))" />
+                    <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Primary"
+                               OnClick="@(() => Nav.NavigateTo($"/courses/{context.Item.Id}/terms"))">
+                        @LocalizationSvc.GetString("OpenAction")
+                    </MudButton>
+                    <MudTooltip Text="@LocalizationSvc.GetString("Edit")">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="@(() => OpenEditDialog(context.Item))" />
+                    </MudTooltip>
+                    <MudTooltip Text="@LocalizationSvc.GetString("Delete")">
+                        <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteCourse(context.Item))" />
+                    </MudTooltip>
                 </MudStack>
             </CellTemplate>
         </TemplateColumn>
@@ -65,88 +84,81 @@
 
 @code {
     private List<Course> _courses = new();
-    private string _search = string.Empty;
+    private List<CourseTerm> _allTerms = new();
+    private string _searchTerm = string.Empty;
     private bool _loading = true;
 
-    private IEnumerable<Course> FilteredCourses => string.IsNullOrWhiteSpace(_search)
-        ? _courses
-        : _courses.Where(c =>
-            (c.CourseType != null && c.CourseType.Contains(_search, StringComparison.OrdinalIgnoreCase)) ||
-            (c.Language != null && c.Language.Contains(_search, StringComparison.OrdinalIgnoreCase)));
+    private IEnumerable<Course> FilteredCourses => _courses.Where(c =>
+        string.IsNullOrWhiteSpace(_searchTerm) ||
+        c.CourseType.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
+        c.Language.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase));
+
+    private int GetFutureTermsCount(Guid courseId) =>
+        _allTerms.Count(t => t.CourseId == courseId && t.StartDate.Date >= DateTime.Today && t.Status != "cancelled");
+
+    private CourseTerm? GetNearestTerm(Guid courseId) =>
+        _allTerms.Where(t => t.CourseId == courseId && t.StartDate.Date >= DateTime.Today && t.Status != "cancelled")
+                 .OrderBy(t => t.StartDate)
+                 .FirstOrDefault();
 
     protected override async Task OnInitializedAsync()
     {
         LocalizationSvc.OnLanguageChanged += StateHasChanged;
-        await LoadAsync();
+        await LoadDataAsync();
     }
 
-    public void Dispose()
-    {
-        LocalizationSvc.OnLanguageChanged -= StateHasChanged;
-    }
+    public void Dispose() => LocalizationSvc.OnLanguageChanged -= StateHasChanged;
 
-    private async Task LoadAsync()
+    private async Task LoadDataAsync()
     {
         _loading = true;
-        try   { _courses = await CourseSvc.GetAllAsync(); }
+        try
+        {
+            _courses = await CourseSvc.GetAllAsync();
+            _allTerms = await CourseTermSvc.GetAllAsync();
+        }
         catch { Snackbar.Add(LocalizationSvc.GetString("ErrorLoadingCourses"), Severity.Error); }
         finally { _loading = false; }
     }
 
-    private void OpenAddDialog() =>
-        _ = OpenDialog(new Course(), isNew: true);
+    private async Task OpenAddDialog() => await OpenCourseDialog(new Course(), isNew: true);
+    private async Task OpenEditDialog(Course c) => await OpenCourseDialog(new Course { Id = c.Id, CourseType = c.CourseType, Language = c.Language }, isNew: false);
 
-    private void OpenEditDialog(Course c) =>
-        _ = OpenDialog(new Course { Id = c.Id, CourseType = c.CourseType, Language = c.Language }, isNew: false);
-
-    private async Task OpenDialog(Course model, bool isNew)
+    private async Task OpenCourseDialog(Course model, bool isNew)
     {
-        var parameters = new DialogParameters
-        {
-            ["Model"] = model,
-            ["IsNew"] = isNew
-        };
+        var parameters = new DialogParameters { ["Model"] = model, ["IsNew"] = isNew };
         var dialog = await DialogSvc.ShowAsync<CourseDialog>(
             isNew ? LocalizationSvc.GetString("NewCourse") : LocalizationSvc.GetString("EditCourse"),
-            parameters,
-            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, CloseButton = true });
+            parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true });
 
         var result = await dialog.Result;
         if (!result.Canceled && result.Data is Course saved)
         {
-            bool success;
-            if (isNew)
+            bool success = isNew ? (await CourseSvc.CreateAsync(saved)) is not null : await CourseSvc.UpdateAsync(saved);
+            if (success)
             {
-                var created = await CourseSvc.CreateAsync(saved);
-                success = created != null;
+                Snackbar.Add(isNew ? LocalizationSvc.GetString("CourseAdded") : LocalizationSvc.GetString("CourseUpdated"), Severity.Success);
+                await LoadDataAsync();
             }
-            else
-            {
-                success = await CourseSvc.UpdateAsync(saved);
-            }
-
-            Snackbar.Add(success
-                ? (isNew ? LocalizationSvc.GetString("CourseAdded") : LocalizationSvc.GetString("CourseUpdated"))
-                : LocalizationSvc.GetString("SaveError"),
-                success ? Severity.Success : Severity.Error);
-
-            if (success) await LoadAsync();
+            else Snackbar.Add(LocalizationSvc.GetString("SaveError"), Severity.Error);
         }
     }
 
-    private async Task DeleteCourse(Course c)
+    private async Task DeleteCourse(Course course)
     {
-        var confirmed = await DialogSvc.ShowMessageBoxAsync(
-            LocalizationSvc.GetString("Confirmation"),
-            $"{LocalizationSvc.GetString("DeleteCourseQuestion")} «{c.CourseType} ({c.Language})»?",
+        var confirmed = await DialogSvc.ShowMessageBoxAsync(LocalizationSvc.GetString("Confirmation"),
+            $"{LocalizationSvc.GetString("DeleteCourseQuestion")} «{course.CourseType} {course.Language}»?",
             yesText: LocalizationSvc.GetString("Yes"), cancelText: LocalizationSvc.GetString("Cancel"));
 
         if (confirmed == true)
         {
-            var ok = await CourseSvc.DeleteAsync(c.Id); 
-            Snackbar.Add(ok ? LocalizationSvc.GetString("CourseDeleted") : LocalizationSvc.GetString("DeleteError"),
-                         ok ? Severity.Success : Severity.Error);
-            if (ok) await LoadAsync();
+            var success = await CourseSvc.DeleteAsync(course.Id);
+            if (success)
+            {
+                Snackbar.Add(LocalizationSvc.GetString("CourseDeleted"), Severity.Success);
+                await LoadDataAsync();
+            }
+            else Snackbar.Add(LocalizationSvc.GetString("DeleteError"), Severity.Error);
         }
     }
 }

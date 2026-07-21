@@ -1,4 +1,5 @@
 @using SmartTable.Client.Models
+@inject ICourseTermService CourseTermSvc
 @inject SmartTable.Client.Services.LocalizationService LocalizationSvc
 
 <MudDialog>
@@ -6,26 +7,51 @@
         <MudText Class="mb-4">
             @LocalizationSvc.GetString("ChooseCoursesFor"): <strong>@Candidate.FullName</strong>
         </MudText>
-        
-        <MudForm @ref="_form" @bind-IsValid="_isValid">
-            <MudSelect T="Guid" @bind-SelectedValues="_selectedCourseIds"
-                       MultiSelection="true"
-                       SelectAll="true"
-                       SelectAllText="@LocalizationSvc.GetString("SelectAllText")"
-                       Label="@LocalizationSvc.GetString("MarkCoursesLabel")"
-                       Variant="Variant.Outlined"
-                       Required="true"
-                       RequiredError="@LocalizationSvc.GetString("RequiredCourseError")">
+
+        @if (_loading)
+        {
+            <MudProgressLinear Indeterminate="true" Class="mb-4" />
+        }
+        else
+        {
+            <MudStack Spacing="3">
                 @foreach (var course in Courses)
                 {
-                    <MudSelectItem T="Guid" Value="@course.Id">@($"{course.CourseType} - {course.Language}")</MudSelectItem>
+                    var availableTerms = _termsByCourse.TryGetValue(course.Id, out var list)
+                        ? list.Where(t => t.Status is not ("cancelled" or "finished")).OrderBy(t => t.StartDate).ToList()
+                        : new List<CourseTerm>();
+
+                    <MudPaper Elevation="0" Class="pa-3" Style="background-color: var(--mud-palette-background-grey); border-radius: 8px;">
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">@course.CourseType @course.Language</MudText>
+
+                        @if (!availableTerms.Any())
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @LocalizationSvc.GetString("NoAvailableTermsForCourse")
+                            </MudText>
+                        }
+                        else
+                        {
+                            @foreach (var term in availableTerms)
+                            {
+                                var label = $"{term.StartDate:dd.MM.yyyy} – {term.EndDate:dd.MM.yyyy}" +
+                                            (string.IsNullOrWhiteSpace(term.Trainer) ? "" : $" ({term.Trainer})");
+
+                                <MudCheckBox T="bool"
+                                             Value="@_selectedTermIds.Contains(term.Id)"
+                                             ValueChanged="@((bool v) => ToggleTerm(term.Id, v))"
+                                             Label="@label"
+                                             Dense="true" />
+                            }
+                        }
+                    </MudPaper>
                 }
-            </MudSelect>
-        </MudForm>
+            </MudStack>
+        }
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel" Color="Color.Default">@LocalizationSvc.GetString("Cancel")</MudButton>
-        <MudButton Color="Color.Success" Variant="Variant.Filled" OnClick="Submit" Disabled="!_selectedCourseIds.Any()">
+        <MudButton Color="Color.Success" Variant="Variant.Filled" OnClick="Submit" Disabled="!_selectedTermIds.Any()">
             @LocalizationSvc.GetString("AssignToCourses")
         </MudButton>
     </DialogActions>
@@ -36,17 +62,39 @@
     [Parameter] public CandidateRegistration Candidate { get; set; } = new();
     [Parameter] public List<Course> Courses { get; set; } = new();
 
-    private MudForm _form = null!;
-    private bool _isValid;
-    private IReadOnlyCollection<Guid> _selectedCourseIds = new HashSet<Guid>();
+    private readonly HashSet<Guid> _selectedTermIds = new();
+    private Dictionary<Guid, List<CourseTerm>> _termsByCourse = new();
+    private bool _loading = true;
 
-    private async Task Submit()
+    protected override async Task OnInitializedAsync()
     {
-        await _form.ValidateAsync();
-        if (_isValid && _selectedCourseIds.Any())
+        try
         {
-            MudDialog.Close(DialogResult.Ok(_selectedCourseIds));
+            var allTerms = await CourseTermSvc.GetAllAsync();
+            _termsByCourse = allTerms.GroupBy(t => t.CourseId).ToDictionary(g => g.Key, g => g.ToList());
         }
+        catch
+        {
+            _termsByCourse = new();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void ToggleTerm(Guid termId, bool selected)
+    {
+        if (selected) _selectedTermIds.Add(termId);
+        else _selectedTermIds.Remove(termId);
+    }
+
+    private void Submit()
+    {
+        if (!_selectedTermIds.Any()) return;
+
+        var result = _selectedTermIds.Select(termId => new CourseAssignmentItem(termId)).ToList();
+        MudDialog.Close(DialogResult.Ok(result));
     }
 
     private void Cancel() => MudDialog.Cancel();

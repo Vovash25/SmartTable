@@ -20,12 +20,12 @@ namespace SmartTable.Client.Services
         public async Task<CandidateRegistration?> CreateAsync(CandidateRegistration model)
         {
             var response = await _http.PostAsJsonAsync("api/candidateregistrations", model);
-            
+
             if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
             {
-                return null; 
+                return null;
             }
-            
+
             if (response.IsSuccessStatusCode)
             {
                 return await response.Content.ReadFromJsonAsync<CandidateRegistration>();
@@ -45,9 +45,9 @@ namespace SmartTable.Client.Services
             return response.IsSuccessStatusCode;
         }
 
-        public async Task<bool> AssignToCourseAsync(Guid registrationId, IEnumerable<Guid> courseIds)
+        public async Task<bool> AssignToCourseAsync(Guid registrationId, IEnumerable<CourseAssignmentItem> assignments)
         {
-            var response = await _http.PostAsJsonAsync($"api/candidateregistrations/{registrationId}/assign", courseIds);
+            var response = await _http.PostAsJsonAsync($"api/candidateregistrations/{registrationId}/assign", assignments);
             return response.IsSuccessStatusCode;
         }
     }
