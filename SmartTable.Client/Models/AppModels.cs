@@ -17,17 +17,6 @@ public class Course
     public string Language { get; set; } = string.Empty;
 }
 
-// Конкретний запланований термін проведення курсу (ADR/PL з 15.08 по 20.08 і т.д.)
-public class CourseDate
-{
-    public Guid Id { get; set; }
-    public Guid CourseId { get; set; }
-    public Course? Course { get; set; }
-    public DateTime StartDate { get; set; } = DateTime.Today;
-    public DateTime? EndDate { get; set; }
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
-}
-
 public class Enrollment
 {
     public Guid Id { get; set; }
@@ -35,11 +24,8 @@ public class Enrollment
     public Student? Student { get; set; }
     public Guid CourseId { get; set; }
     public Course? Course { get; set; }
-
-    // Необов'язково — конкретний термін курсу, на який записаний студент
-    public Guid? CourseDateId { get; set; }
-    public CourseDate? CourseDate { get; set; }
-
+    
+    // Змінено на DateTime? для коректної роботи MudDatePicker
     public DateTime? ArrivalDate { get; set; } 
     public decimal CoursePrice { get; set; }
     public decimal? MedicalExamPrice { get; set; }
@@ -55,6 +41,7 @@ public class Enrollment
     public string Status { get; set; } = "Active";
     public string? Notes { get; set; }
 
+    // === НОВІ ПОЛЯ ДЛЯ КАРТКИ ОБСЛУГОВУВАННЯ (Etap 3) ===
     public string AttendanceStatus { get; set; } = "waiting_arrival";
     public string DocumentsStatus { get; set; } = "not_checked";
     

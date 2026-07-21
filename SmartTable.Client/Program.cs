@@ -49,7 +49,6 @@ builder.Services.AddSingleton<LocalizationService>();
 // ── Domain Services ───────────────────────────────────────────────────────
 builder.Services.AddScoped<IStudentService, StudentService>();
 builder.Services.AddScoped<ICourseService, CourseService>();
-builder.Services.AddScoped<ICourseDateService, CourseDateService>();
 builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<IRegistrationService, RegistrationService>();

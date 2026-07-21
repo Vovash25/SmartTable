@@ -45,9 +45,9 @@ namespace SmartTable.Client.Services
             return response.IsSuccessStatusCode;
         }
 
-        public async Task<bool> AssignToCourseAsync(Guid registrationId, IEnumerable<CourseAssignmentItem> assignments)
+        public async Task<bool> AssignToCourseAsync(Guid registrationId, IEnumerable<Guid> courseIds)
         {
-            var response = await _http.PostAsJsonAsync($"api/candidateregistrations/{registrationId}/assign", assignments);
+            var response = await _http.PostAsJsonAsync($"api/candidateregistrations/{registrationId}/assign", courseIds);
             return response.IsSuccessStatusCode;
         }
     }

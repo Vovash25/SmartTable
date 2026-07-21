@@ -1,54 +1,97 @@
-using System.Net.Http.Json;
-using SmartTable.Client.Models;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using CourseManagementApi.Data;
+using CourseManagementApi.Data.Entities;
+using CourseManagementApi.Auth;
 
-namespace SmartTable.Client.Services
+namespace CourseManagementApi.Controllers
 {
-    public class RegistrationService : IRegistrationService
+    [Route("api/[controller]")]
+    [ApiController]
+    public class EnrollmentsController : ControllerBase
     {
-        private readonly HttpClient _http;
+        private readonly ApplicationDbContext _context;
+        private readonly IAuditLogger _audit;
 
-        public RegistrationService(HttpClient http)
+        public EnrollmentsController(ApplicationDbContext context, IAuditLogger audit)
         {
-            _http = http;
+            _context = context;
+            _audit = audit;
         }
 
-        public async Task<List<CandidateRegistration>> GetAllAsync()
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<Enrollment>>> GetEnrollments()
         {
-            return await _http.GetFromJsonAsync<List<CandidateRegistration>>("api/candidateregistrations") ?? new();
+            return await _context.Enrollments
+                .Include(e => e.Student)
+                .Include(e => e.Course)
+                .ToListAsync();
         }
 
-        public async Task<CandidateRegistration?> CreateAsync(CandidateRegistration model)
+        [HttpPost]
+        public async Task<ActionResult<Enrollment>> CreateEnrollment(Enrollment enrollment)
         {
-            var response = await _http.PostAsJsonAsync("api/candidateregistrations", model);
-            
-            if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
+            var studentExists = await _context.Students.AnyAsync(s => s.Id == enrollment.StudentId);
+            var courseExists = await _context.Courses.AnyAsync(c => c.Id == enrollment.CourseId);
+
+            if (!studentExists || !courseExists)
             {
-                return null; 
+                return BadRequest("Студента або курсу з таким ID не існує в базі даних.");
             }
-            
-            if (response.IsSuccessStatusCode)
+
+            _context.Enrollments.Add(enrollment);
+            await _context.SaveChangesAsync();
+            await _audit.LogAsync("Enrollment", enrollment.Id, "Utworzono zapis na kurs");
+
+            return CreatedAtAction(nameof(GetEnrollments), new { id = enrollment.Id }, enrollment);
+        }
+
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateEnrollment(Guid id, Enrollment enrollment)
+        {
+            if (id != enrollment.Id)
             {
-                return await response.Content.ReadFromJsonAsync<CandidateRegistration>();
+                return BadRequest();
             }
-            return null;
+
+            var studentExists = await _context.Students.AnyAsync(s => s.Id == enrollment.StudentId);
+            var courseExists = await _context.Courses.AnyAsync(c => c.Id == enrollment.CourseId);
+
+            if (!studentExists || !courseExists)
+            {
+                return BadRequest("Студента або курсу з таким ID не існує.");
+            }
+
+            _context.Entry(enrollment).State = EntityState.Modified;
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!_context.Enrollments.Any(e => e.Id == id)) return NotFound();
+                else throw;
+            }
+
+            await _audit.LogAsync("Enrollment", id, "Zaktualizowano dane zapisu na kurs");
+            return NoContent();
         }
 
-        public async Task<bool> UpdateAsync(CandidateRegistration model)
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteEnrollment(Guid id)
         {
-            var response = await _http.PutAsJsonAsync($"api/candidateregistrations/{model.Id}", model);
-            return response.IsSuccessStatusCode;
-        }
+            var enrollment = await _context.Enrollments.FindAsync(id);
+            if (enrollment == null)
+            {
+                return NotFound();
+            }
 
-        public async Task<bool> DeleteAsync(Guid id)
-        {
-            var response = await _http.DeleteAsync($"api/candidateregistrations/{id}");
-            return response.IsSuccessStatusCode;
-        }
+            _context.Enrollments.Remove(enrollment);
+            await _context.SaveChangesAsync();
+            await _audit.LogAsync("Enrollment", id, "Usunięto zapis na kurs");
 
-        public async Task<bool> AssignToCourseAsync(Guid registrationId, IEnumerable<CourseAssignmentItem> assignments)
-        {
-            var response = await _http.PostAsJsonAsync($"api/candidateregistrations/{registrationId}/assign", assignments);
-            return response.IsSuccessStatusCode;
+            return NoContent();
         }
     }
 }

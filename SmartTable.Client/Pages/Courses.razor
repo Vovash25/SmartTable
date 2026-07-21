@@ -1,8 +1,5 @@
 @page "/courses"
-@using SmartTable.Client.Models
 @inject ICourseService CourseSvc
-@inject ICourseDateService CourseDateSvc
-@inject IEnrollmentService EnrollSvc
 @inject IDialogService DialogSvc
 @inject ISnackbar Snackbar
 @inject SmartTable.Client.Services.LocalizationService LocalizationSvc
@@ -19,20 +16,20 @@
     </div>
     <MudButton Variant="Variant.Filled"
                Color="Color.Primary"
-               StartIcon="@Icons.Material.Filled.Add"
+               StartIcon="@Icons.Material.Filled.AddCircleOutline"
                OnClick="OpenAddDialog"
                Disabled="_loading">
         @LocalizationSvc.GetString("AddCourse")
     </MudButton>
 </div>
 
-<MudTextField @bind-Value="_searchTerm"
+<MudTextField @bind-Value="_search"
               Placeholder="@LocalizationSvc.GetString("SearchByTypeOrLanguage")"
               Adornment="Adornment.Start"
               AdornmentIcon="@Icons.Material.Filled.Search"
               Variant="Variant.Outlined"
               Immediate="true"
-              DebounceInterval="250"
+              DebounceInterval="200"
               Class="mb-4"
               Style="max-width:400px;" />
 
@@ -44,105 +41,23 @@
              Dense="true"
              Loading="_loading">
     <Columns>
-        <HierarchyColumn T="Course" />
-        <PropertyColumn Property="x => x.CourseType" Title="@LocalizationSvc.GetString("CourseType")" />
-        <PropertyColumn Property="x => x.Language" Title="@LocalizationSvc.GetString("Language_col")" />
-        <TemplateColumn Title="@LocalizationSvc.GetString("ActionCol")" CellStyle="width:100px;">
+        <PropertyColumn Property="x => x.CourseType" Title="@LocalizationSvc.GetString("CourseType")" Sortable="true" />
+        <PropertyColumn Property="x => x.Language"   Title="@LocalizationSvc.GetString("Language_col")" Sortable="true" />
+        <TemplateColumn Title="@LocalizationSvc.GetString("Actions")" CellStyle="width:100px;" Context="col">
             <CellTemplate>
                 <MudStack Row="true" Spacing="1">
-                    <MudTooltip Text="@LocalizationSvc.GetString("Edit")">
-                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="@(() => OpenEditDialog(context.Item))" />
-                    </MudTooltip>
-                    <MudTooltip Text="@LocalizationSvc.GetString("Delete")">
-                        <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteCourse(context.Item))" />
-                    </MudTooltip>
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                   Size="Size.Small"
+                                   Color="Color.Primary"
+                                   OnClick="@(() => OpenEditDialog(col.Item))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline"
+                                   Size="Size.Small"
+                                   Color="Color.Error"
+                                   OnClick="@(() => DeleteCourse(col.Item))" />
                 </MudStack>
             </CellTemplate>
         </TemplateColumn>
     </Columns>
-
-    @* ── РІВЕНЬ 1: Терміни (дати) цього курсу ──────────────────────────── *@
-    <ChildRowContent>
-        @{ var dates = GetDatesFor(context.Item); }
-
-        <MudCard Elevation="0" Class="pa-4 my-2" Style="background-color: var(--mud-palette-background-grey); border-radius: 8px;">
-            <div class="d-flex align-center justify-space-between mb-3">
-                <MudText Typo="Typo.subtitle1" Color="Color.Primary">
-                    <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Small" Class="mr-1 mb-1" />
-                    @LocalizationSvc.GetString("CourseDatesHeader")
-                </MudText>
-                <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Primary"
-                           StartIcon="@Icons.Material.Filled.AddCircleOutline"
-                           OnClick="@(() => OpenAddDateDialog(context.Item))">
-                    @LocalizationSvc.GetString("AddDateButton")
-                </MudButton>
-            </div>
-
-            @if (!dates.Any())
-            {
-                <MudText Typo="Typo.body2" Color="Color.Secondary">@LocalizationSvc.GetString("NoDatesYet")</MudText>
-            }
-            else
-            {
-                <MudDataGrid T="CourseDate" Items="dates" Dense="true" Hover="true" Elevation="0">
-                    <Columns>
-                        <HierarchyColumn T="CourseDate" />
-                        <TemplateColumn Title="@LocalizationSvc.GetString("StartDateLabel")">
-                            <CellTemplate>@context.Item.StartDate.ToString("dd.MM.yyyy")</CellTemplate>
-                        </TemplateColumn>
-                        <TemplateColumn Title="@LocalizationSvc.GetString("EndDateLabelShort")">
-                            <CellTemplate>@(context.Item.EndDate.HasValue ? context.Item.EndDate.Value.ToString("dd.MM.yyyy") : "—")</CellTemplate>
-                        </TemplateColumn>
-                        <TemplateColumn Title="@LocalizationSvc.GetString("EnrolledStudentsHeader")">
-                            <CellTemplate>@GetEnrollmentsForDate(context.Item.Id).Count</CellTemplate>
-                        </TemplateColumn>
-                        <TemplateColumn Title="@LocalizationSvc.GetString("ActionCol")" CellStyle="width:80px;">
-                            <CellTemplate>
-                                <MudTooltip Text="@LocalizationSvc.GetString("DeleteDateTooltip")">
-                                    <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Size="Size.Small" Color="Color.Error"
-                                                   OnClick="@(() => DeleteDate(context.Item))" />
-                                </MudTooltip>
-                            </CellTemplate>
-                        </TemplateColumn>
-                    </Columns>
-
-                    @* ── РІВЕНЬ 2: Студенти, записані на цю конкретну дату ─────────── *@
-                    <ChildRowContent>
-                        @{ var studentsOnDate = GetEnrollmentsForDate(context.Item.Id); }
-                        <MudCard Elevation="0" Class="pa-3 my-1" Style="background-color: var(--mud-palette-background); border-radius: 8px;">
-                            @if (!studentsOnDate.Any())
-                            {
-                                <MudText Typo="Typo.body2" Color="Color.Secondary">@LocalizationSvc.GetString("NoStudentsForDate")</MudText>
-                            }
-                            else
-                            {
-                                <MudSimpleTable Dense="true" Hover="true">
-                                    <thead>
-                                        <tr>
-                                            <th>@LocalizationSvc.GetString("FullNameCol")</th>
-                                            <th>@LocalizationSvc.GetString("Status")</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach (var e in studentsOnDate)
-                                        {
-                                            <tr>
-                                                <td>@(e.Student?.FullName ?? "—")</td>
-                                                <td>
-                                                    <MudChip T="string" Size="Size.Small" Color="@EnrollmentStatusColor(e.Status)">@EnrollmentStatusLabel(e.Status)</MudChip>
-                                                </td>
-                                            </tr>
-                                        }
-                                    </tbody>
-                                </MudSimpleTable>
-                            }
-                        </MudCard>
-                    </ChildRowContent>
-                </MudDataGrid>
-            }
-        </MudCard>
-    </ChildRowContent>
-
     <NoRecordsContent>
         <MudText Color="Color.Secondary">@LocalizationSvc.GetString("NoCoursesFound")</MudText>
     </NoRecordsContent>
@@ -150,135 +65,88 @@
 
 @code {
     private List<Course> _courses = new();
-    private List<CourseDate> _courseDates = new();
-    private List<Enrollment> _enrollments = new();
-    private string _searchTerm = string.Empty;
+    private string _search = string.Empty;
     private bool _loading = true;
 
-    private IEnumerable<Course> FilteredCourses => _courses.Where(c =>
-        string.IsNullOrWhiteSpace(_searchTerm) ||
-        c.CourseType.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
-        c.Language.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase));
-
-    private List<CourseDate> GetDatesFor(Course course) =>
-        _courseDates.Where(d => d.CourseId == course.Id).OrderBy(d => d.StartDate).ToList();
-
-    private List<Enrollment> GetEnrollmentsForDate(Guid courseDateId) =>
-        _enrollments.Where(e => e.CourseDateId == courseDateId).ToList();
-
-    private static string EnrollmentStatusLabel(string status) => status switch
-    {
-        "Active" => "W trakcie",
-        "Finished" => "Skończone",
-        "Dropped" => "Skreślony",
-        _ => status
-    };
-
-    private static Color EnrollmentStatusColor(string status) => status switch
-    {
-        "Active" => Color.Warning,
-        "Finished" => Color.Info,
-        "Dropped" => Color.Dark,
-        _ => Color.Default
-    };
+    private IEnumerable<Course> FilteredCourses => string.IsNullOrWhiteSpace(_search)
+        ? _courses
+        : _courses.Where(c =>
+            (c.CourseType != null && c.CourseType.Contains(_search, StringComparison.OrdinalIgnoreCase)) ||
+            (c.Language != null && c.Language.Contains(_search, StringComparison.OrdinalIgnoreCase)));
 
     protected override async Task OnInitializedAsync()
     {
         LocalizationSvc.OnLanguageChanged += StateHasChanged;
-        await LoadDataAsync();
+        await LoadAsync();
     }
 
-    public void Dispose() => LocalizationSvc.OnLanguageChanged -= StateHasChanged;
+    public void Dispose()
+    {
+        LocalizationSvc.OnLanguageChanged -= StateHasChanged;
+    }
 
-    private async Task LoadDataAsync()
+    private async Task LoadAsync()
     {
         _loading = true;
-        try
-        {
-            _courses = await CourseSvc.GetAllAsync();
-            _courseDates = await CourseDateSvc.GetAllAsync();
-            _enrollments = await EnrollSvc.GetAllAsync();
-        }
+        try   { _courses = await CourseSvc.GetAllAsync(); }
         catch { Snackbar.Add(LocalizationSvc.GetString("ErrorLoadingCourses"), Severity.Error); }
         finally { _loading = false; }
     }
 
-    private async Task OpenAddDialog() => await OpenCourseDialog(new Course(), isNew: true);
-    private async Task OpenEditDialog(Course c) => await OpenCourseDialog(new Course { Id = c.Id, CourseType = c.CourseType, Language = c.Language }, isNew: false);
+    private void OpenAddDialog() =>
+        _ = OpenDialog(new Course(), isNew: true);
 
-    private async Task OpenCourseDialog(Course model, bool isNew)
+    private void OpenEditDialog(Course c) =>
+        _ = OpenDialog(new Course { Id = c.Id, CourseType = c.CourseType, Language = c.Language }, isNew: false);
+
+    private async Task OpenDialog(Course model, bool isNew)
     {
-        var parameters = new DialogParameters { ["Model"] = model, ["IsNew"] = isNew };
+        var parameters = new DialogParameters
+        {
+            ["Model"] = model,
+            ["IsNew"] = isNew
+        };
         var dialog = await DialogSvc.ShowAsync<CourseDialog>(
             isNew ? LocalizationSvc.GetString("NewCourse") : LocalizationSvc.GetString("EditCourse"),
-            parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true });
+            parameters,
+            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, CloseButton = true });
 
         var result = await dialog.Result;
         if (!result.Canceled && result.Data is Course saved)
         {
-            bool success = isNew ? (await CourseSvc.CreateAsync(saved)) is not null : await CourseSvc.UpdateAsync(saved);
-            if (success)
+            bool success;
+            if (isNew)
             {
-                Snackbar.Add(isNew ? LocalizationSvc.GetString("CourseAdded") : LocalizationSvc.GetString("CourseUpdated"), Severity.Success);
-                await LoadDataAsync();
+                var created = await CourseSvc.CreateAsync(saved);
+                success = created != null;
             }
-            else Snackbar.Add(LocalizationSvc.GetString("SaveError"), Severity.Error);
+            else
+            {
+                success = await CourseSvc.UpdateAsync(saved);
+            }
+
+            Snackbar.Add(success
+                ? (isNew ? LocalizationSvc.GetString("CourseAdded") : LocalizationSvc.GetString("CourseUpdated"))
+                : LocalizationSvc.GetString("SaveError"),
+                success ? Severity.Success : Severity.Error);
+
+            if (success) await LoadAsync();
         }
     }
 
-    private async Task DeleteCourse(Course course)
+    private async Task DeleteCourse(Course c)
     {
-        var confirmed = await DialogSvc.ShowMessageBoxAsync(LocalizationSvc.GetString("Confirmation"),
-            $"{LocalizationSvc.GetString("DeleteCourseQuestion")} «{course.CourseType} {course.Language}»?",
+        var confirmed = await DialogSvc.ShowMessageBoxAsync(
+            LocalizationSvc.GetString("Confirmation"),
+            $"{LocalizationSvc.GetString("DeleteCourseQuestion")} «{c.CourseType} ({c.Language})»?",
             yesText: LocalizationSvc.GetString("Yes"), cancelText: LocalizationSvc.GetString("Cancel"));
 
         if (confirmed == true)
         {
-            var success = await CourseSvc.DeleteAsync(course.Id);
-            if (success)
-            {
-                Snackbar.Add(LocalizationSvc.GetString("CourseDeleted"), Severity.Success);
-                await LoadDataAsync();
-            }
-            else Snackbar.Add(LocalizationSvc.GetString("DeleteError"), Severity.Error);
-        }
-    }
-
-    private async Task OpenAddDateDialog(Course course)
-    {
-        var parameters = new DialogParameters { ["CourseId"] = course.Id };
-        var dialog = await DialogSvc.ShowAsync<AddCourseDateDialog>(
-            LocalizationSvc.GetString("AddDateButton"), parameters,
-            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true });
-
-        var result = await dialog.Result;
-        if (!result.Canceled && result.Data is CourseDate newDate)
-        {
-            var created = await CourseDateSvc.CreateAsync(newDate);
-            if (created is not null)
-            {
-                Snackbar.Add(LocalizationSvc.GetString("SavedSuccessfully"), Severity.Success);
-                await LoadDataAsync();
-            }
-            else Snackbar.Add(LocalizationSvc.GetString("SaveError"), Severity.Error);
-        }
-    }
-
-    private async Task DeleteDate(CourseDate date)
-    {
-        var confirmed = await DialogSvc.ShowMessageBoxAsync(LocalizationSvc.GetString("Confirmation"),
-            $"{LocalizationSvc.GetString("DeleteDateConfirmMessage")} {date.StartDate:dd.MM.yyyy}?",
-            yesText: LocalizationSvc.GetString("Yes"), cancelText: LocalizationSvc.GetString("Cancel"));
-
-        if (confirmed == true)
-        {
-            var success = await CourseDateSvc.DeleteAsync(date.Id);
-            if (success)
-            {
-                Snackbar.Add(LocalizationSvc.GetString("Deleted"), Severity.Success);
-                await LoadDataAsync();
-            }
-            else Snackbar.Add(LocalizationSvc.GetString("DeleteError"), Severity.Error);
+            var ok = await CourseSvc.DeleteAsync(c.Id); 
+            Snackbar.Add(ok ? LocalizationSvc.GetString("CourseDeleted") : LocalizationSvc.GetString("DeleteError"),
+                         ok ? Severity.Success : Severity.Error);
+            if (ok) await LoadAsync();
         }
     }
 }
