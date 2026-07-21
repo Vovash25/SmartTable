@@ -5,7 +5,7 @@ var e=!1;const t=async()=>WebAssembly.validate(new Uint8Array([0,97,115,109,1,0,
   "mainAssemblyName": "SmartTable.Client",
   "applicationEnvironment": "Development",
   "resources": {
-    "hash": "sha256-WX9YKBpD99Aq6rD4Mxz5qtmleIfevr+dfOCrLHzyevs=",
+    "hash": "sha256-kU/2ZDw3nwizGMJywm9r3Rj/01SYoo9SKmQLaw6vRlo=",
     "jsModuleNative": [
       {
         "name": "dotnet.native.ikrs475e5v.js"
@@ -1284,16 +1284,16 @@ var e=!1;const t=async()=>WebAssembly.validate(new Uint8Array([0,97,115,109,1,0,
       },
       {
         "virtualPath": "SmartTable.Client.wasm",
-        "name": "SmartTable.Client.eamf03hiho.wasm",
-        "hash": "sha256-lpp8IIL+Eoks1ic9hQp7YYWJV0T43G4JJGa4bZUQHgc=",
+        "name": "SmartTable.Client.8dsf00wo26.wasm",
+        "hash": "sha256-pMLSkm20h2nuZgFYl7gSar+OKuIscNLuDL4KY1XE06g=",
         "cache": "force-cache"
       }
     ],
     "pdb": [
       {
         "virtualPath": "SmartTable.Client.pdb",
-        "name": "SmartTable.Client.zlp80w20sz.pdb",
-        "hash": "sha256-p9PwhM/fYQQRiF9i/WNDBAV9tffsZaCEvudPz71pOSc=",
+        "name": "SmartTable.Client.d8qljw0hbo.pdb",
+        "hash": "sha256-89QHiH2EQBSNrKa1mBZy+iJtPa5cR/rizNy92hSvaLQ=",
         "cache": "force-cache"
       }
     ],

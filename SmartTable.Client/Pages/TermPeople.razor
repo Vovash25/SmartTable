@@ -21,7 +21,47 @@
     @LocalizationSvc.GetString("EnrolledStudentsHeader"): @_enrollments.Count
 </MudText>
 
-<MudDataGrid T="Enrollment" Items="_enrollments" Dense="true" Hover="true" Loading="_loading">
+@* ── Фільтри ──────────────────────────────────────────────────────────────── *@
+<MudPaper Elevation="0" Class="pa-4 mb-4" Style="background-color: var(--mud-palette-background-grey); border-radius: 8px;">
+    <MudText Typo="Typo.subtitle2" Class="mb-3">
+        <MudIcon Icon="@Icons.Material.Filled.FilterAlt" Size="Size.Small" Class="mr-1 mb-1" />
+        @LocalizationSvc.GetString("FiltersHeader")
+    </MudText>
+    <MudGrid Spacing="2">
+        <MudItem xs="12" sm="4">
+            <MudSelect T="string" MultiSelection="true" @bind-SelectedValues="_filterAttendance"
+                       Label="@LocalizationSvc.GetString("AttendanceCol")" Variant="Variant.Outlined" Dense="true">
+                <MudSelectItem T="string" Value="@("waiting_arrival")">Oczekuje na przyjazd</MudSelectItem>
+                <MudSelectItem T="string" Value="@("arrived")">Dojechał</MudSelectItem>
+                <MudSelectItem T="string" Value="@("no_show")">Nie dojechał</MudSelectItem>
+                <MudSelectItem T="string" Value="@("late")">Spóźniony</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudSelect T="string" MultiSelection="true" @bind-SelectedValues="_filterPayment"
+                       Label="@LocalizationSvc.GetString("PaymentStatusLabel")" Variant="Variant.Outlined" Dense="true">
+                <MudSelectItem T="string" Value="@("unpaid")">Nie zapłacono</MudSelectItem>
+                <MudSelectItem T="string" Value="@("partial")">Częściowo zapłacono</MudSelectItem>
+                <MudSelectItem T="string" Value="@("paid")">Zapłacono</MudSelectItem>
+                <MudSelectItem T="string" Value="@("overpaid")">Nadpłata</MudSelectItem>
+                <MudSelectItem T="string" Value="@("not_required")">Niewymagane</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudTextField T="string" @bind-Value="_filterCompany" Label="@LocalizationSvc.GetString("CompanyCol")"
+                          Variant="Variant.Outlined" Dense="true" Immediate="true" DebounceInterval="200"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+        </MudItem>
+    </MudGrid>
+    @if (HasActiveFilters)
+    {
+        <MudButton Variant="Variant.Text" Size="Size.Small" Color="Color.Secondary" Class="mt-2" OnClick="ClearFilters">
+            @LocalizationSvc.GetString("ClearFiltersButton")
+        </MudButton>
+    }
+</MudPaper>
+
+<MudDataGrid T="Enrollment" Items="FilteredEnrollments" Dense="true" Hover="true" Loading="_loading">
     <Columns>
         <TemplateColumn Title="@LocalizationSvc.GetString("FullNameCol")">
             <CellTemplate>@(context.Item.Student?.FullName ?? "—")</CellTemplate>
@@ -65,6 +105,24 @@
     private CourseTerm? _term;
     private List<Enrollment> _enrollments = new();
     private bool _loading = true;
+
+    private IReadOnlyCollection<string> _filterAttendance = new HashSet<string>();
+    private IReadOnlyCollection<string> _filterPayment = new HashSet<string>();
+    private string _filterCompany = string.Empty;
+
+    private bool HasActiveFilters => _filterAttendance.Any() || _filterPayment.Any() || !string.IsNullOrWhiteSpace(_filterCompany);
+
+    private IEnumerable<Enrollment> FilteredEnrollments => _enrollments.Where(e =>
+        (!_filterAttendance.Any() || _filterAttendance.Contains(e.AttendanceStatus)) &&
+        (!_filterPayment.Any() || _filterPayment.Contains(e.PaymentStatus)) &&
+        (string.IsNullOrWhiteSpace(_filterCompany) || (e.CompanyName?.Contains(_filterCompany, StringComparison.OrdinalIgnoreCase) ?? false)));
+
+    private void ClearFilters()
+    {
+        _filterAttendance = new HashSet<string>();
+        _filterPayment = new HashSet<string>();
+        _filterCompany = string.Empty;
+    }
 
     protected override async Task OnInitializedAsync()
     {

@@ -140,10 +140,12 @@ public class CandidateRegistration
     public string PrimaryContactMethod { get; set; } = string.Empty;
     public string? SecondaryContactMethods { get; set; }
     public string? ContactNotes { get; set; }
+    public Guid? PreferredCourseId { get; set; }
     public string? CourseVariantCode { get; set; }
     public string? CourseType { get; set; }
     public string? CourseLanguage { get; set; }
     public DateTime? PreferredCourseDate { get; set; }
+    public Guid? PreferredCourseTermId { get; set; }
     public DateTime? PlannedArrivalDate { get; set; }
     public string? DateNotes { get; set; }
     public string PayerType { get; set; } = "unknown";

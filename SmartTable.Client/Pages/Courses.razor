@@ -26,15 +26,33 @@
     </MudButton>
 </div>
 
-<MudTextField @bind-Value="_searchTerm"
-              Placeholder="@LocalizationSvc.GetString("SearchByTypeOrLanguage")"
-              Adornment="Adornment.Start"
-              AdornmentIcon="@Icons.Material.Filled.Search"
-              Variant="Variant.Outlined"
-              Immediate="true"
-              DebounceInterval="250"
-              Class="mb-4"
-              Style="max-width:400px;" />
+<MudGrid Spacing="2" Class="mb-4">
+    <MudItem xs="12" sm="4">
+        <MudTextField @bind-Value="_searchTerm"
+                      Placeholder="@LocalizationSvc.GetString("SearchByTypeOrLanguage")"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      Variant="Variant.Outlined"
+                      Immediate="true"
+                      DebounceInterval="250"
+                      Style="max-width:400px;" />
+    </MudItem>
+    <MudItem xs="12" sm="4">
+        <MudSelect T="string" MultiSelection="true" @bind-SelectedValues="_filterTypes"
+                   Label="@LocalizationSvc.GetString("CourseType")" Variant="Variant.Outlined">
+            <MudSelectItem T="string" Value="@("ADR")">ADR</MudSelectItem>
+            <MudSelectItem T="string" Value="@("KWP")">KWP</MudSelectItem>
+            <MudSelectItem T="string" Value="@("SO")">SO</MudSelectItem>
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="12" sm="4">
+        <MudSelect T="string" MultiSelection="true" @bind-SelectedValues="_filterLanguages"
+                   Label="@LocalizationSvc.GetString("Language_col")" Variant="Variant.Outlined">
+            <MudSelectItem T="string" Value="@("RUS")">RUS</MudSelectItem>
+            <MudSelectItem T="string" Value="@("ENG")">ENG</MudSelectItem>
+        </MudSelect>
+    </MudItem>
+</MudGrid>
 
 <MudDataGrid T="Course"
              Items="FilteredCourses"
@@ -86,12 +104,16 @@
     private List<Course> _courses = new();
     private List<CourseTerm> _allTerms = new();
     private string _searchTerm = string.Empty;
+    private IReadOnlyCollection<string> _filterTypes = new HashSet<string>();
+    private IReadOnlyCollection<string> _filterLanguages = new HashSet<string>();
     private bool _loading = true;
 
     private IEnumerable<Course> FilteredCourses => _courses.Where(c =>
-        string.IsNullOrWhiteSpace(_searchTerm) ||
-        c.CourseType.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
-        c.Language.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase));
+        (string.IsNullOrWhiteSpace(_searchTerm) ||
+            c.CourseType.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
+            c.Language.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase)) &&
+        (!_filterTypes.Any() || _filterTypes.Contains(c.CourseType)) &&
+        (!_filterLanguages.Any() || _filterLanguages.Contains(c.Language)));
 
     private int GetFutureTermsCount(Guid courseId) =>
         _allTerms.Count(t => t.CourseId == courseId && t.StartDate.Date >= DateTime.Today && t.Status != "cancelled");

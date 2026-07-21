@@ -1332,8 +1332,6 @@ C:\Users\PC\SmartTable\SmartTable.Client\bin\Debug\net10.0\wwwroot\_framework\ms
 C:\Users\PC\SmartTable\SmartTable.Client\bin\Debug\net10.0\wwwroot\_framework\netstandard.qv9s71s9sf.wasm
 C:\Users\PC\SmartTable\SmartTable.Client\bin\Debug\net10.0\wwwroot\_framework\System.Private.CoreLib.9s549gpy7m.wasm
 C:\Users\PC\SmartTable\SmartTable.Client\bin\Debug\net10.0\wwwroot\_framework\Microsoft.DotNet.HotReload.WebAssembly.Browser.r0uvx0ebhi.wasm
-C:\Users\PC\SmartTable\SmartTable.Client\bin\Debug\net10.0\wwwroot\_framework\SmartTable.Client.eamf03hiho.wasm
-C:\Users\PC\SmartTable\SmartTable.Client\bin\Debug\net10.0\wwwroot\_framework\SmartTable.Client.zlp80w20sz.pdb
 C:\Users\PC\SmartTable\SmartTable.Client\bin\Debug\net10.0\wwwroot\_framework\dotnet.js
 C:\Users\PC\SmartTable\SmartTable.Client\bin\Debug\net10.0\wwwroot\_framework\blazor.webassembly.js.gz
 C:\Users\PC\SmartTable\SmartTable.Client\bin\Debug\net10.0\wwwroot\_framework\CountryData.Standard.z37ilve5ll.wasm.gz
@@ -1550,8 +1548,6 @@ C:\Users\PC\SmartTable\SmartTable.Client\bin\Debug\net10.0\wwwroot\_framework\ic
 C:\Users\PC\SmartTable\SmartTable.Client\bin\Debug\net10.0\wwwroot\_framework\icudt_EFIGS.tptq2av103.dat.gz
 C:\Users\PC\SmartTable\SmartTable.Client\bin\Debug\net10.0\wwwroot\_framework\icudt_no_CJK.lfu7j35m59.dat.gz
 C:\Users\PC\SmartTable\SmartTable.Client\bin\Debug\net10.0\wwwroot\_framework\Microsoft.DotNet.HotReload.WebAssembly.Browser.r0uvx0ebhi.wasm.gz
-C:\Users\PC\SmartTable\SmartTable.Client\bin\Debug\net10.0\wwwroot\_framework\SmartTable.Client.eamf03hiho.wasm.gz
-C:\Users\PC\SmartTable\SmartTable.Client\bin\Debug\net10.0\wwwroot\_framework\SmartTable.Client.zlp80w20sz.pdb.gz
 C:\Users\PC\SmartTable\SmartTable.Client\bin\Debug\net10.0\wwwroot\_framework\dotnet.js.gz
 C:\Users\PC\SmartTable\SmartTable.Client\bin\Debug\net10.0\SmartTable.Client.staticwebassets.runtime.json
 C:\Users\PC\SmartTable\SmartTable.Client\bin\Debug\net10.0\SmartTable.Client.staticwebassets.endpoints.json
@@ -2221,9 +2217,6 @@ C:\Users\PC\SmartTable\SmartTable.Client\obj\Debug\net10.0\compressed\whjuqrzc9x
 C:\Users\PC\SmartTable\SmartTable.Client\obj\Debug\net10.0\compressed\lheb9wurj8-{0}-tptq2av103-tptq2av103.gz
 C:\Users\PC\SmartTable\SmartTable.Client\obj\Debug\net10.0\compressed\fxryy3x13i-{0}-lfu7j35m59-lfu7j35m59.gz
 C:\Users\PC\SmartTable\SmartTable.Client\obj\Debug\net10.0\compressed\75qbp0ta01-{0}-r0uvx0ebhi-r0uvx0ebhi.gz
-C:\Users\PC\SmartTable\SmartTable.Client\obj\Debug\net10.0\compressed\wqinuubkwp-{0}-eamf03hiho-eamf03hiho.gz
-C:\Users\PC\SmartTable\SmartTable.Client\obj\Debug\net10.0\compressed\queg0knftx-{0}-zlp80w20sz-zlp80w20sz.gz
-C:\Users\PC\SmartTable\SmartTable.Client\obj\Debug\net10.0\compressed\5w35zf6ira-{0}-4syey4ayf1-4syey4ayf1.gz
 C:\Users\PC\SmartTable\SmartTable.Client\obj\Debug\net10.0\staticwebassets.build.json
 C:\Users\PC\SmartTable\SmartTable.Client\obj\Debug\net10.0\staticwebassets.build.json.cache
 C:\Users\PC\SmartTable\SmartTable.Client\obj\Debug\net10.0\staticwebassets.development.json
@@ -2234,3 +2227,10 @@ C:\Users\PC\SmartTable\SmartTable.Client\obj\Debug\net10.0\SmartTable.Client.dll
 C:\Users\PC\SmartTable\SmartTable.Client\obj\Debug\net10.0\refint\SmartTable.Client.dll
 C:\Users\PC\SmartTable\SmartTable.Client\obj\Debug\net10.0\SmartTable.Client.pdb
 C:\Users\PC\SmartTable\SmartTable.Client\obj\Debug\net10.0\ref\SmartTable.Client.dll
+C:\Users\PC\SmartTable\SmartTable.Client\bin\Debug\net10.0\wwwroot\_framework\SmartTable.Client.8dsf00wo26.wasm
+C:\Users\PC\SmartTable\SmartTable.Client\bin\Debug\net10.0\wwwroot\_framework\SmartTable.Client.d8qljw0hbo.pdb
+C:\Users\PC\SmartTable\SmartTable.Client\bin\Debug\net10.0\wwwroot\_framework\SmartTable.Client.8dsf00wo26.wasm.gz
+C:\Users\PC\SmartTable\SmartTable.Client\bin\Debug\net10.0\wwwroot\_framework\SmartTable.Client.d8qljw0hbo.pdb.gz
+C:\Users\PC\SmartTable\SmartTable.Client\obj\Debug\net10.0\compressed\wqinuubkwp-{0}-8dsf00wo26-8dsf00wo26.gz
+C:\Users\PC\SmartTable\SmartTable.Client\obj\Debug\net10.0\compressed\queg0knftx-{0}-d8qljw0hbo-d8qljw0hbo.gz
+C:\Users\PC\SmartTable\SmartTable.Client\obj\Debug\net10.0\compressed\5w35zf6ira-{0}-ooj83d7tly-ooj83d7tly.gz

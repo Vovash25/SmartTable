@@ -84,8 +84,51 @@
     }
 </MudPaper>
 
+@* ── Фільтри ──────────────────────────────────────────────────────────────── *@
+<MudPaper Elevation="0" Class="pa-4 mb-4" Style="background-color: var(--mud-palette-background-grey); border-radius: 8px;">
+    <MudText Typo="Typo.subtitle2" Class="mb-3">
+        <MudIcon Icon="@Icons.Material.Filled.FilterAlt" Size="Size.Small" Class="mr-1 mb-1" />
+        @LocalizationSvc.GetString("FiltersHeader")
+    </MudText>
+    <MudGrid Spacing="2">
+        <MudItem xs="12" sm="3">
+            <MudDatePicker @bind-Date="_filterDateFrom" Label="@LocalizationSvc.GetString("FilterDateFromLabel")"
+                           Variant="Variant.Outlined" Dense="true" DateFormat="dd.MM.yyyy" Clearable="true" />
+        </MudItem>
+        <MudItem xs="12" sm="3">
+            <MudDatePicker @bind-Date="_filterDateTo" Label="@LocalizationSvc.GetString("FilterDateToLabel")"
+                           Variant="Variant.Outlined" Dense="true" DateFormat="dd.MM.yyyy" Clearable="true" />
+        </MudItem>
+        <MudItem xs="12" sm="3">
+            <MudSelect T="string" MultiSelection="true" @bind-SelectedValues="_filterStatuses"
+                       Label="@LocalizationSvc.GetString("TermStatusLabel")" Variant="Variant.Outlined" Dense="true">
+                <MudSelectItem T="string" Value="@("planned")">@LocalizationSvc.GetString("TermStatusPlanned")</MudSelectItem>
+                <MudSelectItem T="string" Value="@("active")">@LocalizationSvc.GetString("TermStatusActive")</MudSelectItem>
+                <MudSelectItem T="string" Value="@("finished")">@LocalizationSvc.GetString("TermStatusFinished")</MudSelectItem>
+                <MudSelectItem T="string" Value="@("cancelled")">@LocalizationSvc.GetString("TermStatusCancelled")</MudSelectItem>
+                <MudSelectItem T="string" Value="@("moved")">@LocalizationSvc.GetString("TermStatusMoved")</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="3">
+            <MudSelect T="string" @bind-Value="_filterTrainer" Label="@LocalizationSvc.GetString("TrainerLabel")"
+                       Variant="Variant.Outlined" Dense="true" Clearable="true">
+                @foreach (var trainer in DistinctTrainers)
+                {
+                    <MudSelectItem T="string" Value="@trainer">@trainer</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+    </MudGrid>
+    @if (HasActiveFilters)
+    {
+        <MudButton Variant="Variant.Text" Size="Size.Small" Color="Color.Secondary" Class="mt-2" OnClick="ClearFilters">
+            @LocalizationSvc.GetString("ClearFiltersButton")
+        </MudButton>
+    }
+</MudPaper>
+
 @* ── Терміни ──────────────────────────────────────────────────────────────── *@
-<MudDataGrid T="CourseTerm" Items="_terms" Dense="true" Hover="true" Loading="_loading">
+<MudDataGrid T="CourseTerm" Items="FilteredTerms" Dense="true" Hover="true" Loading="_loading">
     <Columns>
         <TemplateColumn Title="@LocalizationSvc.GetString("StartDateLabel")">
             <CellTemplate>@context.Item.StartDate.ToString("dd.MM.yyyy")</CellTemplate>
@@ -147,6 +190,33 @@
     private List<CourseTermTemplate> _templates = new();
     private List<Enrollment> _enrollments = new();
     private bool _loading = true;
+
+    private DateTime? _filterDateFrom;
+    private DateTime? _filterDateTo;
+    private IReadOnlyCollection<string> _filterStatuses = new HashSet<string>();
+    private string? _filterTrainer;
+
+    private IEnumerable<string> DistinctTrainers => _terms
+        .Where(t => !string.IsNullOrWhiteSpace(t.Trainer))
+        .Select(t => t.Trainer!)
+        .Distinct()
+        .OrderBy(t => t);
+
+    private bool HasActiveFilters => _filterDateFrom.HasValue || _filterDateTo.HasValue || _filterStatuses.Any() || !string.IsNullOrWhiteSpace(_filterTrainer);
+
+    private IEnumerable<CourseTerm> FilteredTerms => _terms.Where(t =>
+        (!_filterDateFrom.HasValue || t.StartDate.Date >= _filterDateFrom.Value.Date) &&
+        (!_filterDateTo.HasValue || t.StartDate.Date <= _filterDateTo.Value.Date) &&
+        (!_filterStatuses.Any() || _filterStatuses.Contains(t.Status)) &&
+        (string.IsNullOrWhiteSpace(_filterTrainer) || t.Trainer == _filterTrainer));
+
+    private void ClearFilters()
+    {
+        _filterDateFrom = null;
+        _filterDateTo = null;
+        _filterStatuses = new HashSet<string>();
+        _filterTrainer = null;
+    }
 
     protected override async Task OnInitializedAsync()
     {

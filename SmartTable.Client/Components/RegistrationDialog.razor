@@ -1,4 +1,7 @@
 @using CountryData.Standard
+@using SmartTable.Client.Models
+@inject ICourseService CourseSvc
+@inject ICourseTermService CourseTermSvc
 @inject SmartTable.Client.Services.LocalizationService LocalizationSvc
 
 <MudDialog Style="min-height:70vh; min-width: 600px;">
@@ -83,17 +86,40 @@
             <MudText Typo="Typo.h6" Class="mb-4" Color="Color.Primary">@LocalizationSvc.GetString("CourseAndDateHeader")</MudText>
             <MudGrid Spacing="2">
                 <MudItem xs="12">
-                    <MudSelect @bind-Value="Model.CourseType" Label="@LocalizationSvc.GetString("CourseTypeLabel")" Variant="Variant.Outlined">
-                        <MudSelectItem Value="@("KWP")">KWP</MudSelectItem>
-                        <MudSelectItem Value="@("SO")">SO</MudSelectItem>
-                        <MudSelectItem Value="@("ADR")">ADR</MudSelectItem>
-                        <MudSelectItem Value="@("Info")">@LocalizationSvc.GetString("CourseInfoOnly")</MudSelectItem>
+                    @* Курс — тепер реальний варіант (SO RUS, KWP ENG і т.д.), а не вільний тип *@
+                    <MudSelect T="Guid?" Value="_selectedCourseId" ValueChanged="OnCourseChanged"
+                               Label="@LocalizationSvc.GetString("CourseTypeLabel")" Variant="Variant.Outlined">
+                        @foreach (var course in _courses)
+                        {
+                            <MudSelectItem T="Guid?" Value="@course.Id">@course.CourseType @course.Language</MudSelectItem>
+                        }
                     </MudSelect>
                 </MudItem>
-                <MudItem xs="6">
-                    <MudDatePicker @bind-Date="Model.PreferredCourseDate" Label="@LocalizationSvc.GetString("PreferredCourseDateLabel")" Variant="Variant.Outlined" DateFormat="dd.MM.yyyy" />
+                <MudItem xs="12">
+                    @* Термін — тепер вибір ЛИШЕ серед уже створених термінів обраного курсу *@
+                    <MudSelect T="Guid?" @bind-Value="Model.PreferredCourseTermId"
+                               Label="@LocalizationSvc.GetString("PreferredCourseDateLabel")"
+                               Variant="Variant.Outlined"
+                               Disabled="@(_selectedCourseId is null)">
+                        @if (_termsForSelectedCourse.Any())
+                        {
+                            @foreach (var term in _termsForSelectedCourse)
+                            {
+                                <MudSelectItem T="Guid?" Value="@term.Id">
+                                    @term.StartDate.ToString("dd.MM.yyyy") – @term.EndDate.ToString("dd.MM.yyyy")
+                                    @(string.IsNullOrWhiteSpace(term.Trainer) ? "" : $" ({term.Trainer})")
+                                </MudSelectItem>
+                            }
+                        }
+                    </MudSelect>
+                    @if (_selectedCourseId is not null && !_termsForSelectedCourse.Any())
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Warning" Class="mt-1 d-block">
+                            @LocalizationSvc.GetString("NoAvailableTermsForCourse")
+                        </MudText>
+                    }
                 </MudItem>
-                <MudItem xs="6">
+                <MudItem xs="12">
                     <MudDatePicker @bind-Date="Model.PlannedArrivalDate" Label="@LocalizationSvc.GetString("PlannedArrivalDateLabel")" Variant="Variant.Outlined" DateFormat="dd.MM.yyyy" />
                 </MudItem>
                 <MudItem xs="12">
@@ -182,14 +208,45 @@
 
     private MudForm _form = null!;
     private bool _isValid;
-    private string? _selectedCourseVariant;
 
-    protected override void OnInitialized()
+    private List<Course> _courses = new();
+    private List<CourseTerm> _allTerms = new();
+    private Guid? _selectedCourseId;
+
+    private List<CourseTerm> _termsForSelectedCourse =>
+        _selectedCourseId is null
+            ? new List<CourseTerm>()
+            : _allTerms.Where(t => t.CourseId == _selectedCourseId && t.Status is not ("cancelled" or "finished"))
+                       .OrderBy(t => t.StartDate).ToList();
+
+    protected override async Task OnInitializedAsync()
     {
-        if (!string.IsNullOrEmpty(Model.CourseType) && !string.IsNullOrEmpty(Model.CourseLanguage))
+        try
         {
-            _selectedCourseVariant = $"{Model.CourseType}_{Model.CourseLanguage}";
+            _courses = await CourseSvc.GetAllAsync();
+            _allTerms = await CourseTermSvc.GetAllAsync();
         }
+        catch
+        {
+            _courses = new();
+            _allTerms = new();
+        }
+
+        // Якщо це редагування вже наявної реєстрації — відновлюємо обраний курс
+        _selectedCourseId = Model.PreferredCourseId;
+    }
+
+    private void OnCourseChanged(Guid? courseId)
+    {
+        _selectedCourseId = courseId;
+        Model.PreferredCourseId = courseId;
+
+        var course = _courses.FirstOrDefault(c => c.Id == courseId);
+        Model.CourseType = course?.CourseType;
+        Model.CourseLanguage = course?.Language;
+
+        // Зміна курсу скидає раніше обраний термін (він міг належати іншому курсу)
+        Model.PreferredCourseTermId = null;
     }
 
     private async Task Submit()
@@ -203,15 +260,12 @@
                 Model.PhoneE164 = $"{Model.CountryCode}{cleanNumber}";
             }
 
-            if (!string.IsNullOrEmpty(_selectedCourseVariant))
+            // Синхронізуємо стару дату-поле з обраним терміном (для сумісності
+            // зі старим кодом, що ще читає PreferredCourseDate).
+            if (Model.PreferredCourseTermId is not null)
             {
-                var parts = _selectedCourseVariant.Split('_');
-                if (parts.Length == 2)
-                {
-                    Model.CourseType = parts[0];
-                    Model.CourseLanguage = parts[1];
-                    Model.CourseVariantCode = _selectedCourseVariant;
-                }
+                var term = _allTerms.FirstOrDefault(t => t.Id == Model.PreferredCourseTermId);
+                if (term is not null) Model.PreferredCourseDate = term.StartDate;
             }
 
             MudDialog.Close(DialogResult.Ok(Model));

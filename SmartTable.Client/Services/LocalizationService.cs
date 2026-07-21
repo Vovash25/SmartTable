@@ -405,6 +405,10 @@ public class LocalizationService
             { "NoAvailableTermsForCourse", "Немає доступних термінів для цього курсу" },
             { "OpenStudentCardAction", "Відкрити картку студента" },
             { "CourseVariantPreview", "Варіант курсу" },
+            { "FiltersHeader", "Фільтри" },
+            { "FilterDateFromLabel", "Дата від" },
+            { "FilterDateToLabel", "Дата до" },
+            { "ClearFiltersButton", "Скинути фільтри" },
         }},
         { "pl", new Dictionary<string, string> {
             { "Students", "Studenci" },
@@ -790,6 +794,10 @@ public class LocalizationService
             { "NoAvailableTermsForCourse", "Brak dostępnych terminów dla tego kursu" },
             { "OpenStudentCardAction", "Otwórz kartę studenta" },
             { "CourseVariantPreview", "Wariant kursu" },
+            { "FiltersHeader", "Filtry" },
+            { "FilterDateFromLabel", "Data od" },
+            { "FilterDateToLabel", "Data do" },
+            { "ClearFiltersButton", "Wyczyść filtry" },
         }},
         { "en", new Dictionary<string, string> {
             { "Students", "Students" },
@@ -1175,6 +1183,10 @@ public class LocalizationService
             { "NoAvailableTermsForCourse", "No available terms for this course" },
             { "OpenStudentCardAction", "Open student card" },
             { "CourseVariantPreview", "Course variant" },
+            { "FiltersHeader", "Filters" },
+            { "FilterDateFromLabel", "Date from" },
+            { "FilterDateToLabel", "Date to" },
+            { "ClearFiltersButton", "Clear filters" },
         }}
     };
  
