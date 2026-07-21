@@ -16,7 +16,7 @@
 
     @* ── Раз на місяць за курсами ─────────────────────────────────────────── *@
     <MudTabPanel Text="@LocalizationSvc.GetString("MonthlyReportTab")">
-        <MudGrid Spacing="2" Class="mb-4">
+        <MudGrid Spacing="3" Class="mb-6 mt-2">
             <MudItem xs="6" sm="2">
                 <MudNumericField T="int" @bind-Value="_year" Label="@LocalizationSvc.GetString("YearLabel")" Variant="Variant.Outlined" Min="2020" Max="2100" />
             </MudItem>
@@ -36,12 +36,12 @@
                     }
                 </MudSelect>
             </MudItem>
-            <MudItem xs="6" sm="2">
+            <MudItem xs="6" sm="2" Class="d-flex align-center">
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" OnClick="LoadMonthlyReport">
                     @LocalizationSvc.GetString("PreviewButton")
                 </MudButton>
             </MudItem>
-            <MudItem xs="6" sm="2">
+            <MudItem xs="6" sm="2" Class="d-flex align-center">
                 <MudButton Variant="Variant.Outlined" Color="Color.Success" FullWidth="true" StartIcon="@Icons.Material.Filled.Download"
                            OnClick="ExportMonthlyReport" Disabled="!_monthlyRows.Any()">
                     Excel
@@ -54,56 +54,58 @@
             <MudProgressLinear Indeterminate="true" Class="mb-4" />
         }
 
-        <MudSimpleTable Dense="true" Hover="true" Striped="true">
-            <thead>
-                <tr>
-                    <th>@LocalizationSvc.GetString("Course")</th>
-                    <th>@LocalizationSvc.GetString("Language_col")</th>
-                    <th>@LocalizationSvc.GetString("EnrolledCountCol")</th>
-                    <th>@LocalizationSvc.GetString("ArrivedCountCol")</th>
-                    <th>@LocalizationSvc.GetString("CompletedCountCol")</th>
-                    <th>@LocalizationSvc.GetString("NoShowCountCol")</th>
-                    <th>@LocalizationSvc.GetString("DroppedCountCol")</th>
-                    <th>@LocalizationSvc.GetString("AmountDueCol")</th>
-                    <th>@LocalizationSvc.GetString("AmountPaidLabel")</th>
-                    <th>@LocalizationSvc.GetString("RemainingLabel")</th>
-                    <th>@LocalizationSvc.GetString("CashSumCol")</th>
-                    <th>@LocalizationSvc.GetString("TransferSumCol")</th>
-                    <th>@LocalizationSvc.GetString("CompanySumCol")</th>
-                    <th>@LocalizationSvc.GetString("ServicesSumCol")</th>
-                </tr>
-            </thead>
-            <tbody>
-                @if (!_monthlyRows.Any())
-                {
-                    <tr><td colspan="14"><MudText Color="Color.Secondary">@LocalizationSvc.GetString("NoReportDataYet")</MudText></td></tr>
-                }
-                @foreach (var row in _monthlyRows)
-                {
+        <MudPaper Elevation="0" Class="pa-4" Style="background-color: var(--mud-palette-background-grey); border-radius: 8px; overflow-x:auto;">
+            <MudSimpleTable Dense="false" Hover="true" Striped="true">
+                <thead>
                     <tr>
-                        <td>@row.CourseType</td>
-                        <td>@row.Language</td>
-                        <td>@row.EnrolledCount</td>
-                        <td>@row.ArrivedCount</td>
-                        <td>@row.CompletedCount</td>
-                        <td>@row.NoShowCount</td>
-                        <td>@row.DroppedCount</td>
-                        <td>@row.AmountDue.ToString("0.##") zł</td>
-                        <td>@row.AmountPaid.ToString("0.##") zł</td>
-                        <td>@row.Remaining.ToString("0.##") zł</td>
-                        <td>@row.CashSum.ToString("0.##") zł</td>
-                        <td>@row.TransferSum.ToString("0.##") zł</td>
-                        <td>@row.CompanySum.ToString("0.##") zł</td>
-                        <td>@row.ServicesSum.ToString("0.##") zł</td>
+                        <th class="px-4">@LocalizationSvc.GetString("Course")</th>
+                        <th class="px-4">@LocalizationSvc.GetString("Language_col")</th>
+                        <th class="px-4">@LocalizationSvc.GetString("EnrolledCountCol")</th>
+                        <th class="px-4">@LocalizationSvc.GetString("ArrivedCountCol")</th>
+                        <th class="px-4">@LocalizationSvc.GetString("CompletedCountCol")</th>
+                        <th class="px-4">@LocalizationSvc.GetString("NoShowCountCol")</th>
+                        <th class="px-4">@LocalizationSvc.GetString("DroppedCountCol")</th>
+                        <th class="px-4">@LocalizationSvc.GetString("AmountDueCol")</th>
+                        <th class="px-4">@LocalizationSvc.GetString("AmountPaidLabel")</th>
+                        <th class="px-4">@LocalizationSvc.GetString("RemainingLabel")</th>
+                        <th class="px-4">@LocalizationSvc.GetString("CashSumCol")</th>
+                        <th class="px-4">@LocalizationSvc.GetString("TransferSumCol")</th>
+                        <th class="px-4">@LocalizationSvc.GetString("CompanySumCol")</th>
+                        <th class="px-4">@LocalizationSvc.GetString("ServicesSumCol")</th>
                     </tr>
-                }
-            </tbody>
-        </MudSimpleTable>
+                </thead>
+                <tbody>
+                    @if (!_monthlyRows.Any())
+                    {
+                        <tr><td colspan="14" class="px-4 py-3"><MudText Color="Color.Secondary">@LocalizationSvc.GetString("NoReportDataYet")</MudText></td></tr>
+                    }
+                    @foreach (var row in _monthlyRows)
+                    {
+                        <tr>
+                            <td class="px-4 py-2">@row.CourseType</td>
+                            <td class="px-4 py-2">@row.Language</td>
+                            <td class="px-4 py-2">@row.EnrolledCount</td>
+                            <td class="px-4 py-2">@row.ArrivedCount</td>
+                            <td class="px-4 py-2">@row.CompletedCount</td>
+                            <td class="px-4 py-2">@row.NoShowCount</td>
+                            <td class="px-4 py-2">@row.DroppedCount</td>
+                            <td class="px-4 py-2">@row.AmountDue.ToString("0.##") zł</td>
+                            <td class="px-4 py-2">@row.AmountPaid.ToString("0.##") zł</td>
+                            <td class="px-4 py-2">@row.Remaining.ToString("0.##") zł</td>
+                            <td class="px-4 py-2">@row.CashSum.ToString("0.##") zł</td>
+                            <td class="px-4 py-2">@row.TransferSum.ToString("0.##") zł</td>
+                            <td class="px-4 py-2">@row.CompanySum.ToString("0.##") zł</td>
+                            <td class="px-4 py-2">@row.ServicesSum.ToString("0.##") zł</td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
     </MudTabPanel>
 
     @* ── Звіт по конкретному терміну ──────────────────────────────────────── *@
     <MudTabPanel Text="@LocalizationSvc.GetString("TermReportTab")">
-        <MudGrid Spacing="2" Class="mb-4">
+        <MudGrid Spacing="3" Class="mb-6 mt-2">
             <MudItem xs="12" sm="4">
                 <MudSelect T="Guid?" @bind-Value="_termFilterCourseId" Label="@LocalizationSvc.GetString("Course")" Variant="Variant.Outlined">
                     @foreach (var course in _courses)
@@ -121,12 +123,12 @@
                     }
                 </MudSelect>
             </MudItem>
-            <MudItem xs="6" sm="2">
+            <MudItem xs="6" sm="2" Class="d-flex align-center">
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" OnClick="LoadTermReport" Disabled="_selectedTermId is null">
                     @LocalizationSvc.GetString("PreviewButton")
                 </MudButton>
             </MudItem>
-            <MudItem xs="6" sm="2">
+            <MudItem xs="6" sm="2" Class="d-flex align-center">
                 <MudButton Variant="Variant.Outlined" Color="Color.Success" FullWidth="true" StartIcon="@Icons.Material.Filled.Download"
                            OnClick="ExportTermReport" Disabled="_termReport is null">
                     Excel
@@ -141,44 +143,46 @@
 
         @if (_termReport is not null)
         {
-            <MudText Typo="Typo.subtitle1" Class="mb-2">
+            <MudText Typo="Typo.subtitle1" Class="mb-3">
                 @_termReport.CourseType @_termReport.Language — @_termReport.StartDate.ToString("dd.MM.yyyy") – @_termReport.EndDate.ToString("dd.MM.yyyy")
             </MudText>
 
-            <MudSimpleTable Dense="true" Hover="true" Striped="true">
-                <thead>
-                    <tr>
-                        <th>@LocalizationSvc.GetString("FullNameCol")</th>
-                        <th>@LocalizationSvc.GetString("AttendanceCol")</th>
-                        <th>@LocalizationSvc.GetString("DocumentsHeader")</th>
-                        <th>@LocalizationSvc.GetString("PaymentStatusLabel")</th>
-                        <th>@LocalizationSvc.GetString("PaymentMethod")</th>
-                        <th>@LocalizationSvc.GetString("AmountDueCol")</th>
-                        <th>@LocalizationSvc.GetString("AmountPaidLabel")</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var p in _termReport.People)
-                    {
+            <MudPaper Elevation="0" Class="pa-4" Style="background-color: var(--mud-palette-background-grey); border-radius: 8px; overflow-x:auto;">
+                <MudSimpleTable Dense="false" Hover="true" Striped="true">
+                    <thead>
                         <tr>
-                            <td>@p.StudentName</td>
-                            <td>@p.AttendanceStatus</td>
-                            <td>@p.DocumentsStatus</td>
-                            <td>@p.PaymentStatus</td>
-                            <td>@(p.PaymentMethod ?? "—")</td>
-                            <td>@p.AmountDue.ToString("0.##") zł</td>
-                            <td>@p.AmountPaid.ToString("0.##") zł</td>
+                            <th class="px-4">@LocalizationSvc.GetString("FullNameCol")</th>
+                            <th class="px-4">@LocalizationSvc.GetString("AttendanceCol")</th>
+                            <th class="px-4">@LocalizationSvc.GetString("DocumentsHeader")</th>
+                            <th class="px-4">@LocalizationSvc.GetString("PaymentStatusLabel")</th>
+                            <th class="px-4">@LocalizationSvc.GetString("PaymentMethod")</th>
+                            <th class="px-4">@LocalizationSvc.GetString("AmountDueCol")</th>
+                            <th class="px-4">@LocalizationSvc.GetString("AmountPaidLabel")</th>
                         </tr>
-                    }
-                </tbody>
-                <tfoot>
-                    <tr>
-                        <td colspan="5"><strong>@LocalizationSvc.GetString("TotalSumLabel")</strong></td>
-                        <td><strong>@_termReport.TotalDue.ToString("0.##") zł</strong></td>
-                        <td><strong>@_termReport.TotalPaid.ToString("0.##") zł</strong></td>
-                    </tr>
-                </tfoot>
-            </MudSimpleTable>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in _termReport.People)
+                        {
+                            <tr>
+                                <td class="px-4 py-2">@p.StudentName</td>
+                                <td class="px-4 py-2">@p.AttendanceStatus</td>
+                                <td class="px-4 py-2">@p.DocumentsStatus</td>
+                                <td class="px-4 py-2">@p.PaymentStatus</td>
+                                <td class="px-4 py-2">@(p.PaymentMethod ?? "—")</td>
+                                <td class="px-4 py-2">@p.AmountDue.ToString("0.##") zł</td>
+                                <td class="px-4 py-2">@p.AmountPaid.ToString("0.##") zł</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="5" class="px-4 py-2"><strong>@LocalizationSvc.GetString("TotalSumLabel")</strong></td>
+                            <td class="px-4 py-2"><strong>@_termReport.TotalDue.ToString("0.##") zł</strong></td>
+                            <td class="px-4 py-2"><strong>@_termReport.TotalPaid.ToString("0.##") zł</strong></td>
+                        </tr>
+                    </tfoot>
+                </MudSimpleTable>
+            </MudPaper>
         }
         else if (!_termLoading)
         {
@@ -219,7 +223,7 @@
 
     public void Dispose() => LocalizationSvc.OnLanguageChanged -= StateHasChanged;
 
-    private static string MonthName(int m) => new DateTime(2000, m, 1).ToString("MMMM");
+    private string MonthName(int m) => LocalizationSvc.GetString($"Month{m}");
 
     private async Task LoadMonthlyReport()
     {
