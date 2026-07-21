@@ -1,0 +1,253 @@
+@page "/reports"
+@using SmartTable.Client.Models
+@using SmartTable.Client.Services
+@inject IReportService ReportSvc
+@inject ICourseService CourseSvc
+@inject ICourseTermService CourseTermSvc
+@inject ISnackbar Snackbar
+@inject SmartTable.Client.Services.LocalizationService LocalizationSvc
+@implements IDisposable
+
+<PageTitle>@LocalizationSvc.GetString("ReportsPageTitle") — SmartTable</PageTitle>
+
+<MudText Typo="Typo.h5" Style="font-weight:700;" Class="mb-4">@LocalizationSvc.GetString("ReportsPageTitle")</MudText>
+
+<MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4">
+
+    @* ── Раз на місяць за курсами ─────────────────────────────────────────── *@
+    <MudTabPanel Text="@LocalizationSvc.GetString("MonthlyReportTab")">
+        <MudGrid Spacing="2" Class="mb-4">
+            <MudItem xs="6" sm="2">
+                <MudNumericField T="int" @bind-Value="_year" Label="@LocalizationSvc.GetString("YearLabel")" Variant="Variant.Outlined" Min="2020" Max="2100" />
+            </MudItem>
+            <MudItem xs="6" sm="2">
+                <MudSelect T="int" @bind-Value="_month" Label="@LocalizationSvc.GetString("MonthLabel")" Variant="Variant.Outlined">
+                    @for (int m = 1; m <= 12; m++)
+                    {
+                        <MudSelectItem T="int" Value="@m">@MonthName(m)</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudSelect T="Guid?" @bind-Value="_monthlyCourseFilter" Label="@LocalizationSvc.GetString("Course")" Variant="Variant.Outlined" Clearable="true">
+                    @foreach (var course in _courses)
+                    {
+                        <MudSelectItem T="Guid?" Value="@course.Id">@course.CourseType @course.Language</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6" sm="2">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" OnClick="LoadMonthlyReport">
+                    @LocalizationSvc.GetString("PreviewButton")
+                </MudButton>
+            </MudItem>
+            <MudItem xs="6" sm="2">
+                <MudButton Variant="Variant.Outlined" Color="Color.Success" FullWidth="true" StartIcon="@Icons.Material.Filled.Download"
+                           OnClick="ExportMonthlyReport" Disabled="!_monthlyRows.Any()">
+                    Excel
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+
+        @if (_monthlyLoading)
+        {
+            <MudProgressLinear Indeterminate="true" Class="mb-4" />
+        }
+
+        <MudSimpleTable Dense="true" Hover="true" Striped="true">
+            <thead>
+                <tr>
+                    <th>@LocalizationSvc.GetString("Course")</th>
+                    <th>@LocalizationSvc.GetString("Language_col")</th>
+                    <th>@LocalizationSvc.GetString("EnrolledCountCol")</th>
+                    <th>@LocalizationSvc.GetString("ArrivedCountCol")</th>
+                    <th>@LocalizationSvc.GetString("CompletedCountCol")</th>
+                    <th>@LocalizationSvc.GetString("NoShowCountCol")</th>
+                    <th>@LocalizationSvc.GetString("DroppedCountCol")</th>
+                    <th>@LocalizationSvc.GetString("AmountDueCol")</th>
+                    <th>@LocalizationSvc.GetString("AmountPaidLabel")</th>
+                    <th>@LocalizationSvc.GetString("RemainingLabel")</th>
+                    <th>@LocalizationSvc.GetString("CashSumCol")</th>
+                    <th>@LocalizationSvc.GetString("TransferSumCol")</th>
+                    <th>@LocalizationSvc.GetString("CompanySumCol")</th>
+                    <th>@LocalizationSvc.GetString("ServicesSumCol")</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!_monthlyRows.Any())
+                {
+                    <tr><td colspan="14"><MudText Color="Color.Secondary">@LocalizationSvc.GetString("NoReportDataYet")</MudText></td></tr>
+                }
+                @foreach (var row in _monthlyRows)
+                {
+                    <tr>
+                        <td>@row.CourseType</td>
+                        <td>@row.Language</td>
+                        <td>@row.EnrolledCount</td>
+                        <td>@row.ArrivedCount</td>
+                        <td>@row.CompletedCount</td>
+                        <td>@row.NoShowCount</td>
+                        <td>@row.DroppedCount</td>
+                        <td>@row.AmountDue.ToString("0.##") zł</td>
+                        <td>@row.AmountPaid.ToString("0.##") zł</td>
+                        <td>@row.Remaining.ToString("0.##") zł</td>
+                        <td>@row.CashSum.ToString("0.##") zł</td>
+                        <td>@row.TransferSum.ToString("0.##") zł</td>
+                        <td>@row.CompanySum.ToString("0.##") zł</td>
+                        <td>@row.ServicesSum.ToString("0.##") zł</td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </MudTabPanel>
+
+    @* ── Звіт по конкретному терміну ──────────────────────────────────────── *@
+    <MudTabPanel Text="@LocalizationSvc.GetString("TermReportTab")">
+        <MudGrid Spacing="2" Class="mb-4">
+            <MudItem xs="12" sm="4">
+                <MudSelect T="Guid?" @bind-Value="_termFilterCourseId" Label="@LocalizationSvc.GetString("Course")" Variant="Variant.Outlined">
+                    @foreach (var course in _courses)
+                    {
+                        <MudSelectItem T="Guid?" Value="@course.Id">@course.CourseType @course.Language</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudSelect T="Guid?" @bind-Value="_selectedTermId" Label="@LocalizationSvc.GetString("SelectDateForCourse")" Variant="Variant.Outlined"
+                           Disabled="@(_termFilterCourseId is null)">
+                    @foreach (var term in TermsForSelectedCourse)
+                    {
+                        <MudSelectItem T="Guid?" Value="@term.Id">@term.StartDate.ToString("dd.MM.yyyy") – @term.EndDate.ToString("dd.MM.yyyy")</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6" sm="2">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" OnClick="LoadTermReport" Disabled="_selectedTermId is null">
+                    @LocalizationSvc.GetString("PreviewButton")
+                </MudButton>
+            </MudItem>
+            <MudItem xs="6" sm="2">
+                <MudButton Variant="Variant.Outlined" Color="Color.Success" FullWidth="true" StartIcon="@Icons.Material.Filled.Download"
+                           OnClick="ExportTermReport" Disabled="_termReport is null">
+                    Excel
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+
+        @if (_termLoading)
+        {
+            <MudProgressLinear Indeterminate="true" Class="mb-4" />
+        }
+
+        @if (_termReport is not null)
+        {
+            <MudText Typo="Typo.subtitle1" Class="mb-2">
+                @_termReport.CourseType @_termReport.Language — @_termReport.StartDate.ToString("dd.MM.yyyy") – @_termReport.EndDate.ToString("dd.MM.yyyy")
+            </MudText>
+
+            <MudSimpleTable Dense="true" Hover="true" Striped="true">
+                <thead>
+                    <tr>
+                        <th>@LocalizationSvc.GetString("FullNameCol")</th>
+                        <th>@LocalizationSvc.GetString("AttendanceCol")</th>
+                        <th>@LocalizationSvc.GetString("DocumentsHeader")</th>
+                        <th>@LocalizationSvc.GetString("PaymentStatusLabel")</th>
+                        <th>@LocalizationSvc.GetString("PaymentMethod")</th>
+                        <th>@LocalizationSvc.GetString("AmountDueCol")</th>
+                        <th>@LocalizationSvc.GetString("AmountPaidLabel")</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in _termReport.People)
+                    {
+                        <tr>
+                            <td>@p.StudentName</td>
+                            <td>@p.AttendanceStatus</td>
+                            <td>@p.DocumentsStatus</td>
+                            <td>@p.PaymentStatus</td>
+                            <td>@(p.PaymentMethod ?? "—")</td>
+                            <td>@p.AmountDue.ToString("0.##") zł</td>
+                            <td>@p.AmountPaid.ToString("0.##") zł</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="5"><strong>@LocalizationSvc.GetString("TotalSumLabel")</strong></td>
+                        <td><strong>@_termReport.TotalDue.ToString("0.##") zł</strong></td>
+                        <td><strong>@_termReport.TotalPaid.ToString("0.##") zł</strong></td>
+                    </tr>
+                </tfoot>
+            </MudSimpleTable>
+        }
+        else if (!_termLoading)
+        {
+            <MudText Color="Color.Secondary">@LocalizationSvc.GetString("NoReportDataYet")</MudText>
+        }
+    </MudTabPanel>
+
+</MudTabs>
+
+@code {
+    private List<Course> _courses = new();
+    private List<CourseTerm> _allTerms = new();
+
+    private int _year = DateTime.Today.Year;
+    private int _month = DateTime.Today.Month;
+    private Guid? _monthlyCourseFilter;
+    private List<MonthlyReportRow> _monthlyRows = new();
+    private bool _monthlyLoading;
+
+    private Guid? _termFilterCourseId;
+    private Guid? _selectedTermId;
+    private TermReport? _termReport;
+    private bool _termLoading;
+
+    private List<CourseTerm> TermsForSelectedCourse =>
+        _termFilterCourseId is null ? new() : _allTerms.Where(t => t.CourseId == _termFilterCourseId).OrderBy(t => t.StartDate).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        LocalizationSvc.OnLanguageChanged += StateHasChanged;
+        try
+        {
+            _courses = await CourseSvc.GetAllAsync();
+            _allTerms = await CourseTermSvc.GetAllAsync();
+        }
+        catch { Snackbar.Add(LocalizationSvc.GetString("ErrorLoadingData"), Severity.Error); }
+    }
+
+    public void Dispose() => LocalizationSvc.OnLanguageChanged -= StateHasChanged;
+
+    private static string MonthName(int m) => new DateTime(2000, m, 1).ToString("MMMM");
+
+    private async Task LoadMonthlyReport()
+    {
+        _monthlyLoading = true;
+        try { _monthlyRows = await ReportSvc.GetMonthlyReportAsync(_year, _month, _monthlyCourseFilter); }
+        catch { Snackbar.Add(LocalizationSvc.GetString("ErrorLoadingData"), Severity.Error); }
+        finally { _monthlyLoading = false; }
+    }
+
+    private async Task ExportMonthlyReport()
+    {
+        try { await ReportSvc.DownloadMonthlyExcelAsync(_year, _month, _monthlyCourseFilter); }
+        catch { Snackbar.Add(LocalizationSvc.GetString("ExportError"), Severity.Error); }
+    }
+
+    private async Task LoadTermReport()
+    {
+        if (_selectedTermId is null) return;
+        _termLoading = true;
+        try { _termReport = await ReportSvc.GetTermReportAsync(_selectedTermId.Value); }
+        catch { Snackbar.Add(LocalizationSvc.GetString("ErrorLoadingData"), Severity.Error); }
+        finally { _termLoading = false; }
+    }
+
+    private async Task ExportTermReport()
+    {
+        if (_selectedTermId is null) return;
+        try { await ReportSvc.DownloadTermExcelAsync(_selectedTermId.Value); }
+        catch { Snackbar.Add(LocalizationSvc.GetString("ExportError"), Severity.Error); }
+    }
+}
