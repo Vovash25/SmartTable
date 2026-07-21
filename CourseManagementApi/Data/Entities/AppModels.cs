@@ -374,6 +374,10 @@ namespace CourseManagementApi.Data.Entities
         [Column("contact_notes")]
         public string? ContactNotes { get; set; }
 
+        // Прив'язка до реально створеного варіанту курсу (SO RUS, KWP ENG і т.д.)
+        [Column("preferred_course_id")]
+        public Guid? PreferredCourseId { get; set; }
+
         [Column("course_variant_code")]
         public string? CourseVariantCode { get; set; }
 
@@ -385,6 +389,10 @@ namespace CourseManagementApi.Data.Entities
 
         [Column("preferred_course_date")]
         public DateTime? PreferredCourseDate { get; set; }
+
+        // Прив'язка до реально створеного терміну курсу (замість вільного вводу дати).
+        [Column("preferred_course_term_id")]
+        public Guid? PreferredCourseTermId { get; set; }
 
         [Column("planned_arrival_date")]
         public DateTime? PlannedArrivalDate { get; set; }
