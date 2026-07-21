@@ -22,7 +22,7 @@
             </MudItem>
             <MudItem xs="6" sm="2">
                 <MudSelect T="int" @bind-Value="_month" Label="@LocalizationSvc.GetString("MonthLabel")" Variant="Variant.Outlined">
-                    @for (int m = 1; m <= 12; m++)
+                    @foreach (var m in Enumerable.Range(1, 12))
                     {
                         <MudSelectItem T="int" Value="@m">@MonthName(m)</MudSelectItem>
                     }

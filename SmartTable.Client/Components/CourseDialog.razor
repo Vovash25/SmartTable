@@ -1,3 +1,4 @@
+@inject ICourseService CourseSvc
 @inject SmartTable.Client.Services.LocalizationService LocalizationSvc
 
 <MudDialog>
@@ -6,26 +7,27 @@
             <MudGrid Spacing="3">
 
                 <MudItem xs="12">
-                    <MudSelect T="string" @bind-Value="Model.CourseType"
-                               Label="@LocalizationSvc.GetString("CourseType")"
-                               Variant="Variant.Outlined"
-                               Required="true"
-                               RequiredError="@LocalizationSvc.GetString("RequiredField")">
-                        <MudSelectItem Value="@("ADR")">ADR</MudSelectItem>
-                        <MudSelectItem Value="@("KWP")">KWP</MudSelectItem>
-                        <MudSelectItem Value="@("SO")">SO</MudSelectItem>
-                    </MudSelect>
+                    <MudAutocomplete T="string" @bind-Value="Model.CourseType"
+                                     Label="@LocalizationSvc.GetString("CourseType")"
+                                     Variant="Variant.Outlined"
+                                     Required="true"
+                                     RequiredError="@LocalizationSvc.GetString("RequiredField")"
+                                     SearchFunc="SearchCourseTypes"
+                                     CoerceText="true"
+                                     ResetValueOnEmptyText="true"
+                                     HelperText="@LocalizationSvc.GetString("CourseTypeHelper")" />
                 </MudItem>
 
                 <MudItem xs="12">
-                    <MudSelect T="string" @bind-Value="Model.Language"
-                               Label="@LocalizationSvc.GetString("Language_col")"
-                               Variant="Variant.Outlined"
-                               Required="true"
-                               RequiredError="@LocalizationSvc.GetString("RequiredField")">
-                        <MudSelectItem Value="@("RUS")">RUS</MudSelectItem>
-                        <MudSelectItem Value="@("ENG")">ENG</MudSelectItem>
-                    </MudSelect>
+                    <MudAutocomplete T="string" @bind-Value="Model.Language"
+                                     Label="@LocalizationSvc.GetString("Language_col")"
+                                     Variant="Variant.Outlined"
+                                     Required="true"
+                                     RequiredError="@LocalizationSvc.GetString("RequiredField")"
+                                     SearchFunc="SearchLanguages"
+                                     CoerceText="true"
+                                     ResetValueOnEmptyText="true"
+                                     HelperText="@LocalizationSvc.GetString("LanguageHelper")" />
                 </MudItem>
 
                 @if (!string.IsNullOrWhiteSpace(Model.CourseType) && !string.IsNullOrWhiteSpace(Model.Language))
@@ -62,11 +64,60 @@
     private MudForm _form = null!;
     private bool _isValid;
 
+    // Базові варіанти завжди пропонуються, плюс усе, що вже реально використано
+    // в інших курсах — так нові значення можна ввести вручну, без правок коду,
+    // а старі — просто вибрати з підказок.
+    private static readonly string[] DefaultTypes = { "ADR", "KWP", "SO" };
+    private static readonly string[] DefaultLanguages = { "RUS", "ENG" };
+
+    private List<string> _knownTypes = new();
+    private List<string> _knownLanguages = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var courses = await CourseSvc.GetAllAsync();
+            _knownTypes = DefaultTypes
+                .Concat(courses.Select(c => c.CourseType))
+                .Where(t => !string.IsNullOrWhiteSpace(t))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(t => t)
+                .ToList();
+
+            _knownLanguages = DefaultLanguages
+                .Concat(courses.Select(c => c.Language))
+                .Where(l => !string.IsNullOrWhiteSpace(l))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(l => l)
+                .ToList();
+        }
+        catch
+        {
+            _knownTypes = DefaultTypes.ToList();
+            _knownLanguages = DefaultLanguages.ToList();
+        }
+    }
+
+    private Task<IEnumerable<string>> SearchCourseTypes(string value, CancellationToken _)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return Task.FromResult(_knownTypes.AsEnumerable());
+        return Task.FromResult(_knownTypes.Where(t => t.Contains(value, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    private Task<IEnumerable<string>> SearchLanguages(string value, CancellationToken _)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return Task.FromResult(_knownLanguages.AsEnumerable());
+        return Task.FromResult(_knownLanguages.Where(l => l.Contains(value, StringComparison.OrdinalIgnoreCase)));
+    }
+
     private async Task Submit()
     {
         await _form.ValidateAsync();
         if (_isValid)
         {
+            Model.CourseType = Model.CourseType?.Trim().ToUpperInvariant() ?? "";
+            Model.Language = Model.Language?.Trim().ToUpperInvariant() ?? "";
             MudDialog.Close(DialogResult.Ok(Model));
         }
     }
