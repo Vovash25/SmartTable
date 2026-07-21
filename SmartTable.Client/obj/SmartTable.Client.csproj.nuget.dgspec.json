@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\ypkab\\SmartTable\\SmartTable.Client\\SmartTable.Client.csproj": {}
+    "C:\\Users\\PC\\SmartTable\\SmartTable.Client\\SmartTable.Client.csproj": {}
   },
   "projects": {
-    "C:\\Users\\ypkab\\SmartTable\\SmartTable.Client\\SmartTable.Client.csproj": {
+    "C:\\Users\\PC\\SmartTable\\SmartTable.Client\\SmartTable.Client.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\ypkab\\SmartTable\\SmartTable.Client\\SmartTable.Client.csproj",
+        "projectUniqueName": "C:\\Users\\PC\\SmartTable\\SmartTable.Client\\SmartTable.Client.csproj",
         "projectName": "SmartTable.Client",
-        "projectPath": "C:\\Users\\ypkab\\SmartTable\\SmartTable.Client\\SmartTable.Client.csproj",
-        "packagesPath": "C:\\Users\\ypkab\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\ypkab\\SmartTable\\SmartTable.Client\\obj\\",
+        "projectPath": "C:\\Users\\PC\\SmartTable\\SmartTable.Client\\SmartTable.Client.csproj",
+        "packagesPath": "C:\\Users\\PC\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\PC\\SmartTable\\SmartTable.Client\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\ypkab\\AppData\\Roaming\\NuGet\\NuGet.Config"
+          "C:\\Users\\PC\\AppData\\Roaming\\NuGet\\NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net10.0"

@@ -17,7 +17,7 @@ namespace CourseManagementApi.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.6")
+                .HasAnnotation("ProductVersion", "10.0.4")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -256,6 +256,130 @@ namespace CourseManagementApi.Migrations
                     b.ToTable("courses");
                 });
 
+            modelBuilder.Entity("CourseManagementApi.Data.Entities.CourseTerm", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CourseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("course_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<decimal?>("DefaultPrice")
+                        .HasColumnType("numeric")
+                        .HasColumnName("default_price");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("end_date");
+
+                    b.Property<bool>("ManuallyModified")
+                        .HasColumnType("boolean")
+                        .HasColumnName("manually_modified");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text")
+                        .HasColumnName("notes");
+
+                    b.Property<int?>("SeatLimit")
+                        .HasColumnType("integer")
+                        .HasColumnName("seat_limit");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("source");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("start_date");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Trainer")
+                        .HasColumnType("text")
+                        .HasColumnName("trainer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CourseId");
+
+                    b.ToTable("course_terms");
+                });
+
+            modelBuilder.Entity("CourseManagementApi.Data.Entities.CourseTermTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CourseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("course_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int?>("DayOfWeek")
+                        .HasColumnType("integer")
+                        .HasColumnName("day_of_week");
+
+                    b.Property<int>("DefaultDurationDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("default_duration_days");
+
+                    b.Property<decimal?>("DefaultPrice")
+                        .HasColumnType("numeric")
+                        .HasColumnName("default_price");
+
+                    b.Property<string>("Frequency")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("frequency");
+
+                    b.Property<DateTime>("GenerateFrom")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("generate_from");
+
+                    b.Property<DateTime>("GenerateTo")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("generate_to");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("mode");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text")
+                        .HasColumnName("notes");
+
+                    b.Property<int?>("SeatLimit")
+                        .HasColumnType("integer")
+                        .HasColumnName("seat_limit");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CourseId");
+
+                    b.ToTable("course_term_templates");
+                });
+
             modelBuilder.Entity("CourseManagementApi.Data.Entities.Enrollment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -287,6 +411,10 @@ namespace CourseManagementApi.Migrations
                     b.Property<decimal>("CoursePrice")
                         .HasColumnType("numeric")
                         .HasColumnName("course_price");
+
+                    b.Property<Guid?>("CourseTermId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("course_term_id");
 
                     b.Property<bool>("DocDrivingLicense")
                         .HasColumnType("boolean")
@@ -400,6 +528,8 @@ namespace CourseManagementApi.Migrations
 
                     b.HasIndex("CourseId");
 
+                    b.HasIndex("CourseTermId");
+
                     b.HasIndex("StudentId", "CourseId")
                         .IsUnique();
 
@@ -484,6 +614,28 @@ namespace CourseManagementApi.Migrations
                     b.ToTable("students");
                 });
 
+            modelBuilder.Entity("CourseManagementApi.Data.Entities.CourseTerm", b =>
+                {
+                    b.HasOne("CourseManagementApi.Data.Entities.Course", "Course")
+                        .WithMany("CourseTerms")
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Course");
+                });
+
+            modelBuilder.Entity("CourseManagementApi.Data.Entities.CourseTermTemplate", b =>
+                {
+                    b.HasOne("CourseManagementApi.Data.Entities.Course", "Course")
+                        .WithMany("CourseTermTemplates")
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Course");
+                });
+
             modelBuilder.Entity("CourseManagementApi.Data.Entities.Enrollment", b =>
                 {
                     b.HasOne("CourseManagementApi.Data.Entities.Course", "Course")
@@ -492,6 +644,11 @@ namespace CourseManagementApi.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("CourseManagementApi.Data.Entities.CourseTerm", "CourseTerm")
+                        .WithMany("Enrollments")
+                        .HasForeignKey("CourseTermId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("CourseManagementApi.Data.Entities.Student", "Student")
                         .WithMany("Enrollments")
                         .HasForeignKey("StudentId")
@@ -499,6 +656,8 @@ namespace CourseManagementApi.Migrations
                         .IsRequired();
 
                     b.Navigation("Course");
+
+                    b.Navigation("CourseTerm");
 
                     b.Navigation("Student");
                 });
@@ -513,6 +672,15 @@ namespace CourseManagementApi.Migrations
                 });
 
             modelBuilder.Entity("CourseManagementApi.Data.Entities.Course", b =>
+                {
+                    b.Navigation("CourseTermTemplates");
+
+                    b.Navigation("CourseTerms");
+
+                    b.Navigation("Enrollments");
+                });
+
+            modelBuilder.Entity("CourseManagementApi.Data.Entities.CourseTerm", b =>
                 {
                     b.Navigation("Enrollments");
                 });
